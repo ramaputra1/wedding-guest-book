@@ -14,6 +14,10 @@ dist/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Test artifacts
 test-results/
