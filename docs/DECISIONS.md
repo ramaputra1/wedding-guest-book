@@ -202,6 +202,8 @@ Full system in `docs/DESIGN.md`.
 
 **Revised after Phase 5 (owner request, branch `fix-grid`):** the destination is chosen only with a spread's "+", never by tapping the mount, and there is none by default — the camera is off until a "+" is pressed. The preview is no longer mirrored, so it matches the saved file; mirroring the saved file instead was rejected because video would have to be re-encoded through a canvas on the iPad, and any writing in the background would read backwards in the album for good. A spread holds at most six items, a limit kept by the interface only: the server still accepts a seventh rather than lose a capture that was already queued (two iPads could, rarely, both add the sixth).
 
+**Second round:** the box is always 4:3 landscape and the print fills it, trimmed on the page only — this replaces Phase 4's option C (portrait prints standing upright), at the owner's request; trimming the saved file instead was rejected, because it would throw pixels away for good. An empty mount aims the camera when touched. Saving a page closes it.
+
 ---
 
 ## D19 — A page version is the whole page, continued from the latest
@@ -211,6 +213,16 @@ Full system in `docs/DESIGN.md`.
 **Why:** a whole-page version can be shown, archived and restored on its own, decades later, without replaying a chain of deltas. Starting from the latest version means a guest adds to the page instead of replacing it in the album's view.
 
 **Trade-off:** if both iPads write on the *same* page at the same time, the later save is what the album shows; the other's writing is not merged into it. Nothing is lost — both versions are rows in D1 and files in R2, and the archive keeps every one. On the day each iPad usually writes on its own spreads, so this should be rare; merging strokes from two versions would be possible later, because both are vector data.
+
+---
+
+## D20 — Deleting a photo or video hides it; nothing is erased
+
+**Chosen (owner, after Phase 5):** a delete inserts a row into a new table, `media_removals` (migration 0002, additive only). The media row and its files stay, and the album leaves the item out. Either iPad may delete any item. The owner can undo a delete by removing that row.
+
+**Why:** the project's rule is that nothing is lost, and destructive actions must be recoverable. The archive that would make a hard delete recoverable (Phase 6) does not exist yet, and on the day a guest can tap the wrong photo. A tombstone row also keeps the "INSERT only" property: deleting never updates or removes an existing row, so two iPads deleting at once cannot conflict.
+
+**Rejected:** a hard delete of the row and the R2 files, which cannot be undone. Also rejected: an `UPDATE` adding a `deleted_at` column to `media`, which would break "nothing is updated in place".
 
 ---
 

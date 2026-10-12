@@ -29,6 +29,8 @@ let entryId: string;
 /** Every id a rejected request tried to create, to prove none exists afterwards. */
 const attemptedEntries: string[] = [];
 const attemptedFiles: string[] = [];
+/** Saved items a rejected request tried to delete: each must still be in the album. */
+const attemptedRemovals: string[] = [];
 
 beforeAll(async () => {
   ipad1 = await login('ipad1');
@@ -74,6 +76,12 @@ const PROTECTED: Array<[string, () => Promise<[string, Call]>]> = [
   }],
   ['POST /api/canvas', async () => ['/api/canvas', { method: 'POST', json: { id: newId('ipad1'), entryId, strokes: [] } }]],
   ['GET /api/canvas', async () => [`/api/canvas?entryId=${entryId}`, {}]],
+  ['DELETE /api/media/{id}', async () => {
+    const id = await uploadPhotoFiles(ipad1, 'ipad1', entryId);
+    expect((await commitPhoto(ipad1, id, entryId)).status).toBe(201);
+    attemptedRemovals.push(id);
+    return [`/api/media/${id}`, { method: 'DELETE' }];
+  }],
   ['GET /api/stats', async () => ['/api/stats', {}]],
   ['GET /api/auth/session', async () => ['/api/auth/session', {}]],
   ['POST /api/auth/logout', async () => ['/api/auth/logout', { method: 'POST' }]],
@@ -222,6 +230,12 @@ describe('rejected requests left no trace', () => {
     const ids = new Set((await freshEntries(ipad1)).map((entry) => entry.id));
     expect(attemptedEntries.length).toBeGreaterThan(0);
     expect(attemptedEntries.filter((id) => ids.has(id))).toEqual([]);
+  });
+
+  it('no item a rejected request tried to delete has left the album', async () => {
+    const media = new Set((await freshEntries(ipad1)).flatMap((entry) => entry.media.map((item) => item.id)));
+    expect(attemptedRemovals.length).toBeGreaterThan(0);
+    expect(attemptedRemovals.filter((id) => !media.has(id))).toEqual([]);
   });
 
   it('no attempted file exists in storage', async () => {

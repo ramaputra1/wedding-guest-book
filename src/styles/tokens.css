@@ -24,6 +24,7 @@
   --on-leaf-soft:  #8A8E98;  /* secondary text on the leaf */
 
   --warn:          #B4654A;  /* unsaved / retry states — used sparingly */
+  --recording:     #D64B3E;  /* the shutter while a video records — nothing else */
 
   --writing-rule:  rgba(26, 34, 56, 0.08);  /* faint ruled lines on writing paper — --ink at 8% */
 }

@@ -20,6 +20,8 @@ interface Props {
   maxItems: number;
   /** Write mode: a page was tapped. */
   onWrite?: (id: string) => void;
+  /** Write mode: a saved photo or video's trash button was pressed. */
+  onRemove?: (item: AlbumMedia) => void;
   /** The live camera, and the spread it is shown in. */
   live?: { spreadId: string; preview: LivePreview };
   /** The writer's destination page, and how it saves. */
@@ -32,9 +34,11 @@ interface Props {
   copy: AlbumCopy;
 }
 
-export function Album({ entries, loadFailed, mode, intro, selectedId, onAdd, onLeave, maxItems, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
-  const shared = { mode, onOpen, onRetry, onDiscard, copy };
-  const loaded = entries ?? [];
+export function Album({ entries, loadFailed, mode, intro, selectedId, onAdd, onLeave, maxItems, onWrite, onRemove, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+  const shared = { mode, onOpen, onRetry, onDiscard, onRemove, copy };
+  // On the public album a spread left with nothing in it — every item deleted,
+  // no page written — is not shown. The iPads keep it, to be filled again.
+  const loaded = (entries ?? []).filter((entry) => mode === 'write' || entry.media.length > 0 || entry.page !== null);
   const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
   const status = loadFailed ? copy.loadFailed : entries === null ? copy.loading : loaded.length === 0 && mode === 'view' ? copy.emptyAlbum : null;
 

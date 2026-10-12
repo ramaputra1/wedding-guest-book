@@ -84,6 +84,11 @@ export function putMediaPart(target: PartTarget, file: Blob): Promise<unknown> {
   });
 }
 
+/** Takes a photo or video out of the album. Nothing is erased (see functions/api/media/[id].ts). */
+export function removeMedia(mediaId: string): Promise<unknown> {
+  return call(`/api/media/${mediaId}`, { method: 'DELETE' });
+}
+
 export interface MediaCommit {
   id: string;
   entryId: string;

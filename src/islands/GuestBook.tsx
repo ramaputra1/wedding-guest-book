@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy } from '../config/site';
-import { getAlbum, getSession, getStats } from '../lib/api';
+import { getAlbum, getSession, getStats, removeMedia } from '../lib/api';
 import { recorderType, type CaptureMode, type Facing } from '../lib/capture/camera';
 import { pickFromNativeCamera, videoContainerOf } from '../lib/capture/fallback';
 import { photoFromFile, photoFromVideo, type CapturedPhoto } from '../lib/capture/photo';
@@ -12,12 +12,14 @@ import { newId } from '../lib/ids';
 import type { QueueItem } from '../lib/queue/store';
 import type { AlbumEntry, AlbumMedia, AlbumMode, ApiStats, DeviceId, VideoContainer } from '../lib/types';
 import { Album, NEW_SPREAD_ID } from './album/Album';
+import { ConfirmRemove } from './album/ConfirmRemove';
 import { MediaViewer } from './album/MediaViewer';
 import { NEW_PAGE_KEY } from './album/WritingCanvas';
 import { CameraRail } from './CameraRail';
 import { useCamera } from './hooks/useCamera';
 import { useUploader } from './hooks/useUploader';
 import { mergeAlbum } from './merge';
+import { holdPlayback } from './album/playback';
 import { SignIn } from './SignIn';
 
 interface Props {
@@ -75,7 +77,14 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   const [selectedId, setSelectedId] = useState<string | null>(null);
   /** The page open for writing, chosen by tapping it — independent of the camera's spread. */
   const [pageId, setPageId] = useState<string | null>(null);
+  /** A page just closed by Save, to hand keyboard focus back to once it is on screen. */
+  const [refocusPage, setRefocusPage] = useState<string | null>(null);
   const [viewing, setViewing] = useState<AlbumMedia | null>(null);
+  /** The item whose trash button was pressed: the Yes / No question is open. */
+  const [removing, setRemoving] = useState<AlbumMedia | null>(null);
+  /** Deleted on this iPad: hidden at once, before the album is read again. */
+  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set());
+  const [removeFailed, setRemoveFailed] = useState(false);
 
   const [railOpen, setRailOpen] = useState(true);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
@@ -180,12 +189,40 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
 
   const album = useMemo(() => {
     if (mode !== 'write' || !deviceId || entries === null) return entries;
-    return mergeAlbum(entries, uploads.items, thumbUrls, deviceId, {
+    const merged = mergeAlbum(entries, uploads.items, thumbUrls, deviceId, {
       photoAlt: copy.photoAlt,
       videoAlt: copy.videoAlt,
       pageAlt: copy.handwrittenPage,
     });
-  }, [mode, deviceId, entries, uploads.items, thumbUrls, copy]);
+    if (removedIds.size === 0) return merged;
+    return merged.map((entry) => ({ ...entry, media: entry.media.filter((item) => !removedIds.has(item.id)) }));
+  }, [mode, deviceId, entries, uploads.items, thumbUrls, copy, removedIds]);
+
+  /**
+   * "Yes, delete": the item leaves the album at once, then the server records
+   * the removal (nothing is erased — functions/api/media/[id].ts). If that
+   * fails it comes back, and a notice says so.
+   */
+  async function confirmRemove() {
+    const item = removing;
+    setRemoving(null);
+    if (!item) return;
+    setRemoveFailed(false);
+    setRemovedIds((current) => new Set(current).add(item.id));
+    try {
+      await removeMedia(item.id);
+      void load(true);
+      refreshStats();
+    } catch {
+      setRemovedIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
+      setRemoveFailed(true);
+      setAnnouncement(copy.remove.failed);
+    }
+  }
 
   const inAlbum = (id: string | null) => id !== null && (id === NEW_SPREAD_ID || (album?.some((entry) => entry.id === id) ?? false));
   const destinationId = inAlbum(selectedId) ? selectedId : null;
@@ -196,6 +233,15 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   // The camera is on only while a spread's "+" is pressed: with nowhere to
   // put a picture, there is no reason to be filming.
   const camera = useCamera({ active: writing && railOpen && destinationId !== null, mode: captureMode, facing, locked: capturing });
+
+  // A new spread's page appears under its new id a render or two after Save.
+  useEffect(() => {
+    if (refocusPage === null) return;
+    const target = document.querySelector<HTMLButtonElement>(`[data-spread-id="${refocusPage}"] .writing-page__choose`);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    setRefocusPage(null);
+  });
 
   // A full spread takes no more: the "+" disappears and the camera turns away.
   const destinationCount = album?.find((entry) => entry.id === destinationId)?.media.length ?? 0;
@@ -284,16 +330,31 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     writeDraft(entryId, { strokes, unsaved: false, updatedAt: createdAt });
     if (isNew) {
       removeDraft(NEW_PAGE_KEY);
-      setPageId(entryId);
       setSelectedId((current) => (current === NEW_SPREAD_ID ? entryId : current));
     }
+    // Saved, the page closes (owner request): it goes back to paper until it
+    // is tapped again, and keyboard focus returns to that page.
+    setPageId(null);
+    setRefocusPage(entryId);
     setAnnouncement(copy.save.saving);
   }
 
   // Nothing moves beside the page while the pen is down (DESIGN.md, Motion):
   // the viewfinder holds its frame until the pen lifts.
-  const onPenDown = () => previewVideo.current?.pause();
-  const onPenUp = () => void previewVideo.current?.play().catch(() => undefined);
+  // The album's playing video pauses too, and nothing makes sound under the pen.
+  const onPenDown = () => {
+    previewVideo.current?.pause();
+    holdPlayback('pen', true);
+  };
+  const onPenUp = () => {
+    void previewVideo.current?.play().catch(() => undefined);
+    holdPlayback('pen', false);
+  };
+
+  // A video playing in the album while another is recorded would be heard in it.
+  useEffect(() => {
+    holdPlayback('recording', recording !== null);
+  }, [recording]);
 
   // The iPad's own camera app takes over only when the live camera cannot
   // work at all — never merely because it is still starting.
@@ -452,10 +513,6 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
           spreadId: destinationId,
           preview: {
             stream: camera.stream,
-            aspect: (() => {
-              const settings = camera.stream.getVideoTracks()[0]?.getSettings();
-              return settings?.width && settings?.height ? settings.width / settings.height : captureMode === 'photo' ? 4 / 3 : 16 / 9;
-            })(),
             reviewing,
             countdown: countdown ?? undefined,
             onVideo: (video: HTMLVideoElement | null) => {
@@ -476,6 +533,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
       onLeave={onLeave}
       maxItems={maxPerSpread}
       onWrite={writing ? setPageId : undefined}
+      onRemove={writing ? setRemoving : undefined}
       live={livePreview}
       editor={
         writing && writingPageId !== null
@@ -525,6 +583,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   if (queueBytes > WARN_QUEUE_BYTES || uploads.items.length >= WARN_QUEUE_ITEMS || storageShare > WARN_STORAGE_SHARE) {
     notices.push(copy.camera.storageWarning);
   }
+  if (removeFailed) notices.push(copy.remove.failed);
   if (camera.problem === 'refused') notices.push(copy.camera.cameraRefused);
   if (camera.problem === 'unavailable') notices.push(copy.camera.cameraUnavailable);
 
@@ -562,6 +621,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         )}
         {albumView}
       </div>
+      {removing && <ConfirmRemove item={removing} onConfirm={() => void confirmRemove()} onCancel={() => setRemoving(null)} copy={copy.remove} />}
       {/* Saves and capture problems, announced without moving focus. */}
       <p class="visually-hidden" aria-live="polite">
         {announcement}

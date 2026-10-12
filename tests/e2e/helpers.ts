@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, type Page } from '@playwright/test';
 import type { ApiEntry, ApiStats } from '../../src/lib/types';
 
@@ -83,13 +84,16 @@ export async function shootAndWaitSaved(page: Page) {
 }
 
 /**
- * Puts a spread with `count` photos on the server straight through the API,
- * from the signed-in page (its cookie travels with each request) — quicker
- * than taking each one on the self-timer. Returns the entry id.
+ * Puts a spread on the server straight through the API, from the signed-in
+ * page (its cookie travels with each request) — quicker than taking each
+ * item on the self-timer. `count` photos, then `videos` copies of the fake
+ * camera's 3-second recording (it has sound). Returns the entry id.
  */
-export function seedEntry(page: Page, count: number, device: 'ipad1' | 'ipad2' = 'ipad1'): Promise<string> {
+export function seedEntry(page: Page, count: number, options: { videos?: number; device?: 'ipad1' | 'ipad2' } = {}): Promise<string> {
+  const { videos = 0, device = 'ipad1' } = options;
+  const mp4 = videos > 0 ? readFileSync('tests/fixtures/fake-camera-3s.mp4').toString('base64') : '';
   return page.evaluate(
-    async ({ count, device }) => {
+    async ({ count, videos, device, mp4 }) => {
       const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
       let last = 0;
       const ulid = () => {
@@ -113,19 +117,31 @@ export function seedEntry(page: Page, count: number, device: 'ipad1' | 'ipad2' =
         if (!response.ok) throw new Error(`${init.method} ${path}: ${response.status} ${await response.text()}`);
       };
       const json = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+      const put = (id: string, part: string, kind: string, body: Blob, type: string) =>
+        send(`/api/media/${id}/${part}?entryId=${entryId}&kind=${kind}${kind === 'video' ? '&container=mp4' : ''}`, {
+          method: 'PUT',
+          headers: { 'content-type': type },
+          body,
+        });
 
       const entryId = ulid();
       await send('/api/entries', json({ id: entryId }));
       for (let i = 0; i < count; i++) {
         const id = ulid();
-        for (const [part, size] of [['original', 640], ['thumb', 160]] as const) {
-          const body = await jpeg(size, (size * 3) / 4);
-          await send(`/api/media/${id}/${part}?entryId=${entryId}&kind=photo`, { method: 'PUT', headers: { 'content-type': 'image/jpeg' }, body });
-        }
+        await put(id, 'original', 'photo', await jpeg(640, 480), 'image/jpeg');
+        await put(id, 'thumb', 'photo', await jpeg(160, 120), 'image/jpeg');
         await send('/api/media', json({ id, entryId, kind: 'photo', width: 640, height: 480 }));
+      }
+      const video = mp4 ? new Blob([Uint8Array.from(atob(mp4), (c) => c.charCodeAt(0))], { type: 'video/mp4' }) : null;
+      for (let i = 0; i < videos; i++) {
+        const id = ulid();
+        await put(id, 'original', 'video', video!, 'video/mp4');
+        await put(id, 'thumb', 'video', await jpeg(160, 120), 'image/jpeg');
+        await put(id, 'poster', 'video', await jpeg(640, 480), 'image/jpeg');
+        await send('/api/media', json({ id, entryId, kind: 'video', width: 640, height: 480, durationMs: 3_000, container: 'mp4' }));
       }
       return entryId;
     },
-    { count, device },
+    { count, videos, device, mp4 },
   );
 }

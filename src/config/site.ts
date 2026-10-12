@@ -93,6 +93,19 @@ export interface PageCopy {
 }
 
 /** Words in the full-size viewer on the public album. */
+/** Deleting a photo or video from a spread (writer iPads). */
+export interface RemoveCopy {
+  /** The trash button's name: "Delete this photo" / "Delete this video". */
+  buttonPhoto: string;
+  buttonVideo: string;
+  questionPhoto: string;
+  questionVideo: string;
+  detail: string;
+  yes: string;
+  no: string;
+  failed: string;
+}
+
 export interface ViewerCopy {
   openPhoto: string;
   playVideo: string;
@@ -136,6 +149,9 @@ export interface AlbumCopy {
   of: string;
   /** "Add a photo or video to Spread 3" — the "+" beneath a mount. */
   addTo: string;
+  /** The control on a video playing in its mount (writer iPads). */
+  playback: { play: string; pause: string; soundOn: string };
+  remove: RemoveCopy;
   video: string;
   seconds: string;
   blankPage: string;
@@ -234,6 +250,17 @@ export const site = {
     showItem: 'Show item',
     of: 'of',
     addTo: 'Add a photo or video to',
+    playback: { play: 'Play', pause: 'Pause', soundOn: 'Sound on' },
+    remove: {
+      buttonPhoto: 'Delete this photo',
+      buttonVideo: 'Delete this video',
+      questionPhoto: 'Delete this photo?',
+      questionVideo: 'Delete this video?',
+      detail: 'It leaves the album on both iPads and online. If it was a mistake, it can still be brought back.',
+      yes: 'Yes, delete',
+      no: 'No',
+      failed: "That didn't delete. Check the wifi and try again.",
+    },
     video: 'Video',
     seconds: 'seconds',
     blankPage: 'Blank page',

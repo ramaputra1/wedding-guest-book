@@ -90,6 +90,10 @@ Viewports: iPad landscape (1180×820), iPad portrait (820×1180), phone (390×84
 
 **Aiming the camera and opening a page** (`tests/e2e/grid.spec.ts`): nothing is aimed until a "+" is pressed; a number turns the camera away; six items per spread; a page opens only when tapped; a photo and a page started on "New spread" stay together; the preview is unmirrored; the public album's numbers. Spreads with several photos are seeded through the API from the signed-in page, rather than shot one by one on the self-timer.
 
+**Deleting** (`tests/removals.spec.ts`, `tests/e2e/delete.spec.ts`): the API hides the item from both iPads and the public album, keeps its file and bytes, is idempotent, refuses other sites and missing sessions; the iPad shows the trash only after a number is tapped, centred; No and Escape keep the item, Yes deletes it; a full spread gets its "+" back; a failed delete brings the item back with a notice; an emptied spread leaves the public album.
+
+**Recording and playback** (`tests/e2e/playback.spec.ts`): the shutter turns recording red and the stored MP4 has a sound track; saved videos play in their mounts unmuted and looping, one at a time, pause and resume, hold during a recording and under the pen; a browser that refuses sound without a tap gets "Sound on"; reduced motion stops autoplay. Chrome runs with autoplay allowed, so whether iOS Safari starts sound on its own is a device check.
+
 ---
 
 ## 5. Accessibility

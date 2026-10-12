@@ -69,12 +69,15 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │   ├── merge.ts              # saved album + queued captures → what the writer sees
 │   │   ├── hooks/
 │   │   │   ├── useCamera.ts      # the live stream: on only when needed
-│   │   │   └── useUploader.ts    # the queue, as Preact state
+│   │   │   ├── useUploader.ts    # the queue, as Preact state
+│   │   │   └── useSwipe.ts       # sideways swipe through a mount's items
 │   │   └── album/                # the album's parts, shared by both modes
 │   │       ├── Album.tsx
 │   │       ├── Spread.tsx
 │   │       ├── MediaMount.tsx    # print shape, viewfinder, save status, carousel
 │   │       ├── MediaViewer.tsx   # full-size photo / video on the public album
+│   │       ├── ConfirmRemove.tsx # "Delete this photo?" — Yes / No
+│   │       ├── playback.ts       # writer iPads: saved videos play in place, one at a time
 │   │       ├── PhotoCorners.tsx
 │   │       ├── WritingPage.tsx   # a page as the album shows it (saved PNG)
 │   │       ├── WritingCanvas.tsx # the writer's page: canvas, tools, save
@@ -111,6 +114,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │       │   └── session.ts
 │       ├── entries.ts
 │       ├── media.ts              # commit
+│       ├── media/[id].ts         # DELETE: take an item out of the album
 │       ├── media/[id]/[part].ts  # stream one file to R2
 │       ├── canvas.ts             # commit; latest strokes
 │       ├── canvas/[id].ts        # stream the PNG to R2
@@ -131,7 +135,8 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   └── db.ts                     # D1 queries — INSERT only
 │
 ├── migrations/
-│   └── 0001_init.sql
+│   ├── 0001_init.sql
+│   └── 0002_media_removals.sql  # deleting a photo or video: hides, never erases
 │
 ├── scripts/
 │   ├── prepare-hero.mjs          # original photo → stripped, resized src/assets/hero/hero.jpg

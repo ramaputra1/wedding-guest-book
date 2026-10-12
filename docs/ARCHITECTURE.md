@@ -107,6 +107,13 @@ CREATE TABLE canvases (
 CREATE INDEX idx_entries_created ON entries(created_at);
 CREATE INDEX idx_media_entry     ON media(entry_id, sort_order);
 CREATE INDEX idx_canvases_entry  ON canvases(entry_id, version DESC);
+
+-- migrations/0002_media_removals.sql (owner request after Phase 5)
+CREATE TABLE media_removals (
+  media_id    TEXT PRIMARY KEY REFERENCES media(id),
+  device_id   TEXT NOT NULL,      -- which iPad removed it
+  removed_at  INTEGER NOT NULL    -- epoch ms, server clock
+);
 ```
 
 ### Three properties this model exists to guarantee
@@ -114,6 +121,8 @@ CREATE INDEX idx_canvases_entry  ON canvases(entry_id, version DESC);
 **Concurrent writes cannot collide.** Every write is an `INSERT` of a new row with a device-prefixed ULID. Nothing updates a shared counter, index row, or position field. Two iPads writing in the same millisecond touch entirely disjoint rows and R2 keys, so no locking is needed anywhere.
 
 **Nothing is ever overwritten.** Saving a canvas inserts a new `version`, it does not update the previous one. An accidental "clear" is recoverable because the earlier version still exists. Display reads the highest version per entry.
+
+**Deleting hides; it never erases.** Removing a photo or video (see "Removing a photo or video") inserts a row into `media_removals`. The media row and its files stay, so the album simply stops showing it, and the owner can bring it back.
 
 **Drawings outlive their pixels.** `stroke_data` holds the vector strokes, not just the flattened PNG. The PNG is what visitors see; the strokes mean a drawing can be re-rendered at any resolution, edited, or rebuilt if the PNG is ever lost.
 
@@ -155,6 +164,7 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 | `PUT` | `/api/canvas/{id}` | **session** | Stream a canvas version's PNG into R2 |
 | `POST` | `/api/canvas` | **session** | Commit a canvas version: stroke JSON to D1, version number assigned |
 | `GET` | `/api/canvas?entryId=` | **session** | The latest version's stroke JSON, so a writer can carry on writing on that page |
+| `DELETE` | `/api/media/{id}` | **session** | Take a photo or video out of the album: a row in `media_removals`; nothing is erased |
 | `GET` | `/api/stats` | **session** | Storage used, entry count — feeds the writer's gauge |
 | `GET` | `/api/files/{r2 key}` | — | Serve a stored photo, video, poster, thumbnail or page; byte ranges for video |
 
@@ -212,6 +222,42 @@ A capture is not "saved" until storage confirms it. The sequence:
 5. Queued items retry automatically when connectivity returns.
 
 **Queue sizing caveat.** The IndexedDB queue shares the ~1 GB iOS browser budget. At 5 MB a video, a total wifi failure would take roughly 150–200 queued clips to fill it. The writer UI shows queue depth and a storage warning when pending uploads build up, so the problem surfaces during the wedding rather than after it.
+
+---
+
+## Removing a photo or video
+
+Owner request after Phase 5. On a writer iPad, tapping an item's number shows a trash button in the middle of it. The button asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
+
+**Nothing is erased.** `DELETE /api/media/{id}` (session required) inserts one row into `media_removals`. The `media` row and its files in R2 stay:
+
+- `GET /api/entries` leaves removed items out.
+- `/api/stats` counts album items without them, but bytes still include their files.
+- The archive (Phase 6) must carry `media_removals` too.
+
+A deleted item's file URL keeps working for anyone who already has it, because the file is kept. The URLs are long random ids, not guessable.
+
+The album query falls back to showing everything if migration 0002 has not been applied yet. Code deployed before the migration therefore never breaks the album; deleting simply fails until the migration is in.
+
+**Bringing an item back** (owner, from a terminal):
+
+```bash
+# What was deleted, newest first:
+npx wrangler d1 execute wedding-guestbook --remote --command \
+  "SELECT r.media_id, r.device_id, datetime(r.removed_at/1000,'unixepoch') AS removed, m.kind, m.entry_id,
+          '/api/files/' || m.r2_key AS file
+   FROM media_removals r JOIN media m ON m.id = r.media_id ORDER BY r.removed_at DESC"
+
+# Bring one back:
+npx wrangler d1 execute wedding-guestbook --remote --command \
+  "DELETE FROM media_removals WHERE media_id = 'ipad1-01…'"
+```
+
+`file` opens the deleted photo or video in a browser (prefix it with the site's address), so you can see which one it is before bringing it back. To bring back **everything** ever deleted: `DELETE FROM media_removals`. The same SQL also works in the Cloudflare dashboard: **D1 → the database → Console**.
+
+A restored item reappears in its spread even if that spread already holds six. The limit only stops new captures (no "+"); it never hides what is saved, so the spread then shows seven.
+
+(For the test database add `--env preview` and use `wedding-guestbook-test`.)
 
 ---
 

@@ -109,12 +109,21 @@ async function latestStrokes(page: Page, entryId: string) {
   }, entryId);
 }
 
-/** Saves the page and waits until the server has the new version and the queue is empty. */
+/**
+ * Saves the page and waits until the server has the new version and the
+ * queue is empty. Saving closes the page (owner request), so it is opened
+ * again — on its new spread, if it started on "New spread" — to carry on.
+ */
 async function saveAndWait(page: Page) {
   const before = (await serverStats(page)).canvasVersions;
+  const spreadsBefore = new Set((await serverEntries(page)).map((e) => e.id));
+  const spreadId = await page.locator('.writing-page--live').evaluate((el) => el.closest('[data-spread-id]')!.getAttribute('data-spread-id')!);
   await page.locator('.writing-tool--save').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
   await expect.poll(async () => (await serverStats(page)).canvasVersions, { timeout: 60_000 }).toBe(before + 1);
   await expect.poll(async () => (await queued(page)).length, { timeout: 60_000 }).toBe(0);
+  const entryId = spreadId === 'new-spread' ? (await serverEntries(page)).find((e) => !spreadsBefore.has(e.id))!.id : spreadId;
+  await openPage(page, entryId);
   await expect(page.locator('.writing-tool--save')).toHaveText('Saved');
   await deskInView(page);
 }
@@ -398,9 +407,11 @@ test('offline: a saved page waits in the queue as "Saving…", survives a reload
   await page.route('**/api/canvas**', (route) => route.abort('internetdisconnected'));
   await drawWithMouse(page, [0.2, 0.3], [0.7, 0.6]);
   await page.locator('.writing-tool--save').click();
-  await expect(page.locator('.writing-page--live .mount-status--saving')).toHaveText('Saving…');
+  // Saved, the page closes; "Saving…" shows on the paper until the server has it.
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
   await expect.poll(async () => (await queued(page)).length).toBe(1);
-  const entryId = await deskEntryId(page);
+  const entryId = (await queued(page))[0].entryId;
+  await expect(page.locator(`[data-spread-id="${entryId}"] .writing-page .mount-status--saving`)).toHaveText('Saving…');
   expect(JSON.parse((await draft(page, entryId))!)).toMatchObject({ unsaved: false });
 
   // A reload while still offline: the page comes back from the iPad's own copy.

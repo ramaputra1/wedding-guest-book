@@ -26,6 +26,7 @@ interface Props {
   onAdd: () => void;
   onLeave: () => void;
   canAdd: boolean;
+  onRemove?: (item: AlbumMedia) => void;
   /** Write mode: the page was tapped — write on it. */
   onWrite?: () => void;
   live?: LivePreview;
@@ -38,7 +39,7 @@ interface Props {
 }
 
 /** One entry as an open spread: media left, its handwriting right, the gutter between. */
-export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, canAdd, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, canAdd, onRemove, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   return (
     <article class="spread" aria-label={name} data-spread-id={spreadId}>
       <div class="spread__media">
@@ -50,6 +51,7 @@ export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, 
           onAdd={onAdd}
           onLeave={onLeave}
           canAdd={canAdd}
+          onRemove={onRemove}
           live={live}
           justSaved={justSaved}
           onOpen={onOpen}

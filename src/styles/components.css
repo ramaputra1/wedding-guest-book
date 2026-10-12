@@ -223,9 +223,10 @@
  * Media mount — a print held by four photo corners
  * ------------------------------------------------------------------------- */
 
-/* The mount is a fixed 4:3 space, so every spread lines up. The print inside
-   keeps its own shape (.mount__frame): a landscape photo spans the width, a
-   portrait one stands upright at full height. Nothing is cropped. */
+/* The mount is a fixed 4:3 landscape space, so every spread lines up, and the
+   print always fills it (owner request): a portrait photo or a 16:9 video is
+   trimmed to the box on the page only. The saved file is whole, and the
+   public album's viewer shows all of it. */
 .mount {
   position: relative;
   display: grid;
@@ -244,19 +245,21 @@ button.mount--open {
   cursor: zoom-in;
 }
 
-/* Its aspect ratio is the item's own, set inline from the photo's size. */
+.mount[data-addable='true'] {
+  cursor: pointer;
+}
+
 .mount__frame {
   position: relative;
   inline-size: 100%;
+  aspect-ratio: 4 / 3;
 }
 
-.mount__frame--tall {
-  inline-size: auto;
-  block-size: 100%;
-}
-
+/* pan-y: the page still scrolls up and down over a mount, while a sideways
+   swipe is left to the carousel (useSwipe). */
 .mount-wrap {
   position: relative;
+  touch-action: pan-y;
 }
 
 /* The print: photographic paper with a narrow white border, lifted by the
@@ -281,6 +284,60 @@ button.mount--open {
    capture that just landed is shown. */
 .mount__print--behind {
   opacity: 0;
+}
+
+/* Writer iPads: a saved video plays in its mount; a tap on it plays or pauses. */
+.mount__media--inline {
+  display: block;
+  cursor: pointer;
+}
+
+/* Play / Pause / Sound on, in the corner opposite the duration: a full-size
+   target on the same leaf plate as the badge. */
+.mount__playback {
+  position: absolute;
+  /* Centred on the same line as the duration badge, which is shorter. */
+  inset-block-end: var(--space-1);
+  inset-inline-end: calc(var(--space-5) + var(--space-2));
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-mount);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  cursor: pointer;
+}
+
+/* Delete (writer iPads): appears in the middle of the print once its number
+   is tapped. A plain leaf disc with a hairline ring — not --warn, which means
+   "not saved", and not --brass, which is state. A circle is geometry here,
+   not a radius choice. */
+.mount__remove {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  margin: auto;
+  padding: 0;
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  border-radius: 50%;
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  cursor: pointer;
+}
+
+.mount__remove svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* A video looks like any other print; only this badge says it moves. */
@@ -940,19 +997,27 @@ button.mount--open {
   cursor: progress;
 }
 
-/* While recording the face becomes the rounded "stop" square: a change of
-   shape, so the state is never carried by the ring alone. */
+/* While recording the face becomes the rounded "stop" square, and both it
+   and the clock ring turn recording red (owner request) — the colour every
+   camera uses, so nobody has to wonder whether it is filming. Shape and
+   colour together: the state never rests on one signal. */
 .shutter[data-recording='true'] .shutter__face {
   inline-size: 45%;
   block-size: 45%;
   border-radius: var(--radius-button);
+  background-color: var(--recording);
+}
+
+.shutter[data-recording='true'] .shutter__ring-time {
+  stroke: var(--recording);
 }
 
 .shutter__face {
   transition:
     inline-size var(--duration-state) var(--ease),
     block-size var(--duration-state) var(--ease),
-    border-radius var(--duration-state) var(--ease);
+    border-radius var(--duration-state) var(--ease),
+    background-color var(--duration-state) var(--ease);
 }
 
 /* Video mode: the ring that depletes over the 15 seconds. */
@@ -1114,6 +1179,79 @@ button.mount--open {
   font-family: var(--font-ui);
   font-weight: 600;
   cursor: pointer;
+}
+
+/* "Delete this photo?" — Yes / No. Solid backdrop, like the viewer (no blur);
+   the item itself is shown, so the question is never about the wrong one. */
+.confirm {
+  inline-size: min(100% - var(--page-margin) * 2, calc(var(--space-10) * 3));
+  /* The base reset zeroes margins; a modal dialog centres itself with auto. */
+  margin: auto;
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-paper);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.confirm::backdrop {
+  background-color: var(--leaf-edge);
+}
+
+.confirm__item {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: var(--space-2) solid var(--photo-paper);
+  border-radius: var(--radius-mount);
+}
+
+.confirm__question {
+  margin-block: var(--space-5) var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+.confirm__detail {
+  margin: 0;
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+}
+
+.confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-block-start: var(--space-6);
+}
+
+.confirm__no,
+.confirm__yes {
+  min-inline-size: var(--space-8);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-button);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm__no {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  background: none;
+  color: var(--on-leaf);
+}
+
+.confirm__yes {
+  border: 0;
+  background-color: var(--photo-paper);
+  color: var(--ink);
 }
 
 .rail__destination {
