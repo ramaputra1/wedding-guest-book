@@ -1,19 +1,22 @@
 ---
-// The public landing page: the cover, then the album.
-// Phase 2 replaces the placeholder section with the album itself.
+// The public landing page: the cover, then the album, read-only.
 import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
 import CoverLift from '../components/CoverLift.astro';
+import GuestBook from '../islands/GuestBook';
 import { site } from '../config/site';
+import { getPlaceholderAlbum } from '../lib/placeholder-album';
+
+// Phase 3 replaces the placeholder with entries fetched from /api/entries.
+const entries = await getPlaceholderAlbum();
 ---
 
 <Base>
   <CoverLift slot="head" />
   <Hero />
   <main class="album" id="album" data-lift-target>
-    <div class="album__intro">
-      <p>{site.intro}</p>
-      <p class="album__empty">Nothing here yet.</p>
-    </div>
+    {/* client:visible: the cover loads with no island JavaScript; the album
+        hydrates only once the reader scrolls it into view. */}
+    <GuestBook client:visible mode="view" entries={entries} intro={site.intro} copy={site.album} />
   </main>
 </Base>

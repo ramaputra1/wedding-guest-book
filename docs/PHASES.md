@@ -136,7 +136,8 @@ The interface, with hard-coded placeholder data. This is the main design review 
 - `functions/api/auth/login.ts`, `logout.ts`
 - `functions/api/entries.ts`, `media.ts`, `canvas.ts`, `stats.ts`
 - `scripts/hash-passphrase.mjs`
-- `/ipad1` and `/ipad2` routes with device identity and the sign-in island
+- The sign-in island in front of `/ipad1` and `/ipad2` (the writer pages themselves exist since Phase 2)
+- Replace the placeholder album with entries from `/api/entries`; delete `src/lib/placeholder-*.ts` and `src/pages/placeholder/`
 - `tests/auth.spec.ts` and `tests/concurrency.spec.ts`
 
 **Out of scope:** capture, canvas drawing. Endpoints are exercised by tests, not UI.

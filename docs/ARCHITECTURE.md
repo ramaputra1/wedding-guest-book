@@ -58,7 +58,7 @@ The dots are a carousel — one mount holds several items. The far-right strip i
 
 | Route | Renders | Access |
 |---|---|---|
-| `/` | Landing + album, all entries from both devices, chronological | Public, read-only |
+| `/` | Landing + album, all entries from both devices, chronological. The album is rendered in the browser by the Preact island from `GET /api/entries` (DECISIONS D8, D13) | Public, read-only |
 | `/ipad1` | Album + writer controls, device identity `ipad1` | Passphrase |
 | `/ipad2` | Album + writer controls, device identity `ipad2` | Passphrase |
 

@@ -82,7 +82,11 @@
 }
 
 /* ---------------------------------------------------------------------------
- * Album — placeholder until Phase 2
+ * Album
+ *
+ * Mobile-first: everything below describes the folded book (phone, iPad
+ * portrait). The one breakpoint — `(orientation: landscape) and
+ * (min-width: 48rem)`, see DESIGN.md, Layout — opens each spread side by side.
  * ------------------------------------------------------------------------- */
 
 .album {
@@ -96,13 +100,542 @@
   background-color: var(--leaf);
 }
 
-.album__intro {
+.album__intro,
+.album__empty {
   text-align: center;
 }
 
 .album__empty {
   margin-block-start: var(--space-4);
   color: var(--on-leaf-soft);
+}
+
+/* The <svg> holding the shared ruling pattern takes no space. Its colour is
+   what the pattern's currentColor resolves to. */
+.album__defs {
+  position: absolute;
+  color: var(--writing-rule);
+}
+
+.book {
+  max-inline-size: var(--album-max);
+  margin-block-start: var(--space-8);
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------------------
+ * Spread — one entry: media, gutter, writing
+ * ------------------------------------------------------------------------- */
+
+/* Folded: media above, writing below, joined by a horizontal seam so the two
+   still read as one unit. */
+.spread {
+  display: grid;
+  grid-template-rows: auto var(--gutter-width) auto;
+}
+
+/* Proximity does the grouping: the space between spreads is clearly larger
+   than the space inside one, so a mount and its page read as a pair. */
+.spread + .spread {
+  margin-block-start: var(--space-9);
+}
+
+.spread__media,
+.spread__writing {
+  display: grid;
+  align-content: start;
+  min-inline-size: 0;
+  padding-inline: var(--space-4);
+}
+
+.spread__media {
+  padding-block: var(--space-4) var(--space-3);
+}
+
+.spread__writing {
+  padding-block: var(--space-4);
+}
+
+/* The gutter: a raised strip whose deepest point is a dark line down (or,
+   folded, across) its middle — a seam in the binding, not a gap between cards. */
+.gutter {
+  position: relative;
+  background-color: var(--leaf-raised);
+}
+
+.gutter::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 50%;
+  block-size: var(--rule-width);
+  background-color: var(--leaf-edge);
+  box-shadow: 0 0 var(--space-3) var(--space-1) var(--leaf-edge);
+}
+
+@media (orientation: landscape) and (min-width: 48rem) {
+  /* One seam drawn down the whole book. Drawn per spread, its soft edge
+     would fade out at every join and the seam would look broken. */
+  .book {
+    position: relative;
+  }
+
+  .book::before {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    inset-block: 0;
+    inset-inline-start: 50%;
+    inline-size: var(--rule-width);
+    translate: -50% 0;
+    background-color: var(--leaf-edge);
+    box-shadow: 0 0 var(--space-3) var(--space-1) var(--leaf-edge);
+  }
+
+  .spread {
+    grid-template-rows: none;
+    grid-template-columns: minmax(0, 1fr) var(--gutter-width) minmax(0, 1fr);
+  }
+
+  /* Spreads butt together so their gutters form one continuous seam down
+     the book; the space between entries lives inside each page instead. */
+  .spread + .spread {
+    margin-block-start: 0;
+  }
+
+  .spread__media,
+  .spread__writing {
+    padding-block: var(--space-7);
+    padding-inline: var(--space-6);
+  }
+
+  .gutter::before {
+    content: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Media mount — a print held by four photo corners
+ * ------------------------------------------------------------------------- */
+
+.mount {
+  position: relative;
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+button.mount {
+  cursor: pointer;
+}
+
+/* The print: photographic paper with a narrow white border, lifted by the
+   fine light edge along its top (--mount-lift), not a grey blur. */
+.mount__print {
+  position: absolute;
+  inset: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-mount);
+  background-color: var(--photo-paper);
+  box-shadow: var(--mount-lift);
+}
+
+.mount__media {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+/* A video looks like any other print; only this badge says it moves. */
+.mount__duration {
+  position: absolute;
+  inset-block-end: var(--space-4);
+  inset-inline-start: calc(var(--space-5) + var(--space-2));
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-mount);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Photo corners: right triangles that overlap each corner of the print, the
+   way gummed corners hold a real one. */
+.corner {
+  position: absolute;
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  background-color: var(--on-leaf-soft);
+  transition: background-color var(--duration-state) var(--ease);
+}
+
+.corner--top-start {
+  inset-block-start: calc(var(--space-1) * -1);
+  inset-inline-start: calc(var(--space-1) * -1);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.corner--top-end {
+  inset-block-start: calc(var(--space-1) * -1);
+  inset-inline-end: calc(var(--space-1) * -1);
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.corner--bottom-start {
+  inset-block-end: calc(var(--space-1) * -1);
+  inset-inline-start: calc(var(--space-1) * -1);
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.corner--bottom-end {
+  inset-block-end: calc(var(--space-1) * -1);
+  inset-inline-end: calc(var(--space-1) * -1);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+/* Selected: brass corners and a brass hairline beneath. Two signals, so the
+   state never rests on colour alone; aria-pressed carries it to assistive
+   technology. No glow, no outline, no scale. */
+.mount[aria-pressed='true'] .corner {
+  background-color: var(--brass);
+}
+
+.mount[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: calc(var(--space-3) * -1);
+  block-size: var(--rule-width);
+  background-color: var(--brass);
+}
+
+/* ---------------------------------------------------------------------------
+ * Carousel dots
+ * ------------------------------------------------------------------------- */
+
+.dots {
+  display: flex;
+  justify-content: center;
+  min-block-size: var(--space-7);
+  margin-block-start: var(--space-3);
+}
+
+/* Folded, an empty row would only push the page away from its mount. */
+.dots:empty {
+  display: none;
+}
+
+/* Wide, the row is always present, so single- and multi-item spreads line up. */
+@media (orientation: landscape) and (min-width: 48rem) {
+  .dots {
+    margin-block-start: var(--space-4);
+  }
+
+  .dots:empty {
+    display: flex;
+  }
+}
+
+/* A full-size touch target around a small drawn dot. */
+.dots__dot {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-7);
+  block-size: var(--space-7);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.dots__dot::before {
+  content: '';
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
+  border-radius: 50%;
+}
+
+.dots__dot[aria-current='true']::before {
+  border-color: var(--brass);
+  background-color: var(--brass);
+}
+
+/* ---------------------------------------------------------------------------
+ * Writing page
+ * ------------------------------------------------------------------------- */
+
+/* Paper before canvas: no border box, no chrome at its edges. The ruling is
+   an SVG pattern, not a CSS gradient (DESIGN.md: no gradients). */
+.writing-page {
+  position: relative;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: var(--radius-paper);
+  background-color: var(--writing-paper);
+  color: var(--ink);
+}
+
+.writing-page__rules,
+.writing-page__ink {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.writing-page__ink {
+  object-fit: contain;
+}
+
+/* ---------------------------------------------------------------------------
+ * Writer surface: album + camera rail (/ipad1, /ipad2)
+ *
+ * Folded, the rail is a bar along the bottom with the shutter in thumb reach.
+ * Wide, it is a column flush to the right edge.
+ * ------------------------------------------------------------------------- */
+
+.writer {
+  /* Room for the bottom bar: the shutter plus its padding, plus the home
+     indicator on phones. */
+  --rail-bar: calc(var(--space-8) + var(--space-3) * 2);
+  padding-block-end: calc(var(--rail-bar) + env(safe-area-inset-bottom, 0px));
+}
+
+.writer:has(.rail[data-open='false']) {
+  --rail-bar: calc(var(--space-7) + var(--space-3) * 2);
+}
+
+.writer__album {
+  padding-block-start: var(--space-7);
+}
+
+.rail {
+  position: fixed;
+  inset-inline: 0;
+  inset-block-end: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-block: var(--space-3) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  padding-inline: var(--page-margin);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+}
+
+.rail__toggle {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--space-7);
+  block-size: var(--space-7);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-button);
+  background: none;
+  color: var(--on-leaf);
+  cursor: pointer;
+}
+
+.rail__chevron {
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--focus-width);
+  /* Folded: points down to tuck the bar away, up to bring it back. */
+  rotate: 90deg;
+  transition: rotate var(--duration-rail) var(--ease);
+}
+
+.rail[data-open='false'] .rail__chevron {
+  rotate: -90deg;
+}
+
+.rail__controls {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rail__controls[hidden] {
+  display: none;
+}
+
+/* Photo / Video: native radios, so arrow keys work. The chosen one is
+   brighter, heavier and underlined in brass — not colour alone. */
+.rail__mode {
+  display: flex;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.rail__mode-option {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--space-8);
+  min-block-size: var(--space-7);
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+
+.rail__mode-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rail__mode-option:has(input:checked) {
+  color: var(--on-leaf);
+  font-weight: 600;
+}
+
+.rail__mode-option:has(input:checked)::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
+  background-color: var(--brass);
+}
+
+/* The radio itself is invisible, so its focus ring is drawn on the label. */
+.rail__mode-option:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--brass);
+  outline-offset: calc(var(--space-1) * -1);
+}
+
+.shutter {
+  position: relative;
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-8);
+  block-size: var(--space-8);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: none;
+  cursor: pointer;
+}
+
+.shutter__face {
+  inline-size: calc(100% - var(--space-3));
+  block-size: calc(100% - var(--space-3));
+  border-radius: var(--radius-pill);
+  background-color: var(--photo-paper);
+}
+
+/* Video mode: the ring that Phase 4 depletes over 15 seconds. */
+.shutter__ring {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  rotate: -90deg;
+  fill: none;
+  stroke: var(--on-leaf);
+  stroke-width: var(--focus-width);
+  vector-effect: non-scaling-stroke;
+  opacity: 0;
+  transition: opacity var(--duration-state) var(--ease);
+}
+
+.shutter[data-mode='video'] .shutter__ring {
+  opacity: 1;
+}
+
+.rail__destination {
+  justify-self: end;
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+@media (orientation: landscape) and (min-width: 48rem) {
+  .writer {
+    --rail-width: calc(var(--space-8) + var(--space-5) * 2);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--rail-width);
+    padding-block-end: 0;
+    transition: grid-template-columns var(--duration-rail) var(--ease);
+  }
+
+  .writer:has(.rail[data-open='false']) {
+    --rail-width: var(--space-7);
+  }
+
+  /* The rail comes first in the markup so it is first in keyboard order —
+     it is the tool; the album is the content — but sits on the right. */
+  .writer__album {
+    grid-row: 1;
+    grid-column: 1;
+    min-inline-size: 0;
+  }
+
+  .rail {
+    position: sticky;
+    inset-block-start: 0;
+    grid-row: 1;
+    grid-column: 2;
+    flex-direction: column;
+    gap: var(--space-6);
+    block-size: 100vh;
+    block-size: 100svh;
+    padding-block: var(--space-4);
+    padding-inline: 0;
+    overflow: hidden;
+  }
+
+  /* Wide: points right to tuck the rail away, left to bring it back. */
+  .rail__chevron {
+    rotate: 0deg;
+  }
+
+  .rail[data-open='false'] .rail__chevron {
+    rotate: 180deg;
+  }
+
+  .rail__controls {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding-block-end: var(--space-4);
+  }
+
+  .rail__mode {
+    flex-direction: column;
+    justify-self: auto;
+  }
+
+  .rail__destination {
+    justify-self: auto;
+    padding-inline: var(--space-2);
+    text-align: center;
+  }
 }
 
 /* ---------------------------------------------------------------------------
@@ -124,7 +657,7 @@
 
 /* The photograph recedes into the leaf as the first spread rises over it. */
 .lifted .hero__cover {
-  transform: scale(0.96);
+  transform: scale(var(--lift-scale));
 }
 
 .lifted .album {

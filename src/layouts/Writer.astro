@@ -1,0 +1,25 @@
+---
+// The writer surface for one of the two iPads. The route is identity, not
+// authorization: it says which device is writing. From Phase 3 a signed
+// session cookie decides whether a write is allowed, checked server-side.
+import Base from './Base.astro';
+import GuestBook from '../islands/GuestBook';
+import { site } from '../config/site';
+import { getPlaceholderAlbum } from '../lib/placeholder-album';
+import type { DeviceId } from '../lib/types';
+
+interface Props {
+  deviceId: DeviceId;
+}
+
+const { deviceId } = Astro.props;
+
+// Phase 3 replaces the placeholder with entries fetched from /api/entries.
+const entries = await getPlaceholderAlbum();
+---
+
+<Base title={`${site.title} · ${site.devices[deviceId]}`}>
+  <main class="writer-page">
+    <GuestBook client:load mode="write" entries={entries} intro={site.intro} copy={site.album} />
+  </main>
+</Base>

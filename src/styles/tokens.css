@@ -22,6 +22,8 @@
   --on-leaf-soft:  #8A8E98;  /* secondary text on the leaf */
 
   --warn:          #B4654A;  /* unsaved / retry states — used sparingly */
+
+  --writing-rule:  rgba(26, 34, 56, 0.08);  /* faint ruled lines on writing paper — --ink at 8% */
 }
 
 /* Typography */
@@ -60,6 +62,10 @@
   --radius-button: 4px;
   --radius-pill:   999px;   /* the shutter, and only the shutter */
 
+  --rule-width:  1px;      /* hairlines: the selection rule, seams, dot rings */
+  --focus-width: 2px;      /* the brass keyboard focus ring */
+  --album-max:   80rem;    /* the book never grows wider than this on large screens */
+
   /* A mounted print reads as mounted because of a fine light edge along its
      top, not a grey blur beneath it. */
   --mount-lift:
@@ -74,4 +80,5 @@
   --duration-rail:  240ms;
   --duration-lift:  600ms;
   --ease:           cubic-bezier(0.22, 0.61, 0.36, 1);
+  --lift-scale:     0.96;   /* how far the cover recedes during the lift */
 }

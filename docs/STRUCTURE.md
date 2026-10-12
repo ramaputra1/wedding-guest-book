@@ -48,34 +48,39 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │   └── components.css        # mount, writing page, rail, gutter
 │   │
 │   ├── layouts/
-│   │   └── Base.astro
+│   │   ├── Base.astro
+│   │   └── Writer.astro          # shared shell of /ipad1 and /ipad2
 │   │
 │   ├── pages/
-│   │   ├── index.astro           # public album, read-only
+│   │   ├── index.astro           # cover + public album, read-only
 │   │   ├── ipad1.astro           # writer, device identity 'ipad1'
-│   │   └── ipad2.astro           # writer, device identity 'ipad2'
+│   │   ├── ipad2.astro           # writer, device identity 'ipad2'
+│   │   └── placeholder/[page].svg.ts  # Phase 2 only — deleted in Phase 3
 │   │
 │   ├── components/               # static Astro — no hydration
 │   │   ├── Hero.astro
-│   │   ├── CoverLift.astro
-│   │   ├── Album.astro
-│   │   ├── Spread.astro
-│   │   ├── MediaMount.astro
-│   │   ├── PhotoCorners.astro
-│   │   ├── WritingPage.astro
-│   │   └── Gutter.astro
+│   │   └── CoverLift.astro
 │   │
-│   ├── islands/                  # Preact — the only hydrated code
-│   │   ├── GuestBook.tsx         # writer surface root
+│   ├── islands/                  # Preact — the one island, the only hydrated code
+│   │   ├── GuestBook.tsx         # root: album read-only on /, + writer controls on /ipadN
 │   │   ├── CameraRail.tsx
 │   │   ├── Shutter.tsx
-│   │   ├── Canvas.tsx
-│   │   └── SignIn.tsx
+│   │   ├── Canvas.tsx            # Phase 5
+│   │   ├── SignIn.tsx            # Phase 3
+│   │   └── album/                # the album's parts, shared by both modes
+│   │       ├── Album.tsx
+│   │       ├── Spread.tsx
+│   │       ├── MediaMount.tsx
+│   │       ├── PhotoCorners.tsx
+│   │       ├── WritingPage.tsx
+│   │       └── Gutter.tsx
 │   │
 │   └── lib/
 │       ├── ids.ts                # {device}-{ULID} generation
 │       ├── api.ts                # typed client for /api/*
 │       ├── types.ts              # shared Entry / Media / Canvas types
+│       ├── placeholder-album.ts  # Phase 2 only — deleted in Phase 3
+│       ├── placeholder-ink.ts    # Phase 2 only — deleted in Phase 3
 │       ├── queue/
 │       │   ├── store.ts          # IndexedDB via idb
 │       │   └── uploader.ts       # retry, backoff, resume
@@ -129,7 +134,9 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 
 **`src/` is client, `functions/` and `lib-server/` are server.** Nothing in `lib-server/` may ever be imported from `src/`. That is the line that keeps the signing key and passphrase hash out of the browser bundle. If you find yourself wanting to share a type across the line, put it in `src/lib/types.ts` — types erase at compile time, values do not.
 
-**`src/components/` never hydrates.** Static Astro only. Anything needing state, events, or browser APIs belongs in `src/islands/`.
+**`src/components/` never hydrates.** Static Astro only — the cover. Anything needing state, events, or browser APIs belongs in `src/islands/`.
+
+**The album lives in the island, not in Astro components.** Entries arrive at runtime from `/api/entries`, and a static build cannot render data it does not have, so the album is Preact. Astro pre-renders it to HTML at build time; on `/` it hydrates read-only, and only once scrolled into view (`client:visible`), so the cover itself loads with no island JavaScript. See `DECISIONS.md` D8.
 
 **`src/config/site.ts` holds every customisable value** — names, date, hero image path, title text. The owner edits this one file to change the wedding's details. Never hard-code a name, date, or copy string in a component.
 
