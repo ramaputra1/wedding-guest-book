@@ -12,8 +12,14 @@ interface Props {
   loadFailed: boolean;
   mode: AlbumMode;
   intro: string;
+  /** Where the camera's next capture lands, if anywhere. */
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onAdd: (id: string) => void;
+  onLeave: (id: string) => void;
+  /** A spread holds at most this many photos and videos. */
+  maxItems: number;
+  /** Write mode: a page was tapped. */
+  onWrite?: (id: string) => void;
   /** The live camera, and the spread it is shown in. */
   live?: { spreadId: string; preview: LivePreview };
   /** The writer's destination page, and how it saves. */
@@ -26,7 +32,7 @@ interface Props {
   copy: AlbumCopy;
 }
 
-export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function Album({ entries, loadFailed, mode, intro, selectedId, onAdd, onLeave, maxItems, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const shared = { mode, onOpen, onRetry, onDiscard, copy };
   const loaded = entries ?? [];
   const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
@@ -60,7 +66,10 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               spreadId={entry.id}
               name={`${copy.spread} ${i + 1}`}
               selected={selectedId === entry.id}
-              onSelect={() => onSelect(entry.id)}
+              onAdd={() => onAdd(entry.id)}
+              onLeave={() => onLeave(entry.id)}
+              canAdd={entry.media.length < maxItems}
+              onWrite={onWrite && (() => onWrite(entry.id))}
               live={live?.spreadId === entry.id ? live.preview : undefined}
               editor={editor?.spreadId === entry.id ? editor : undefined}
               justSaved={justSaved?.has(entry.id)}
@@ -74,7 +83,10 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               spreadId={NEW_SPREAD_ID}
               name={copy.newSpread}
               selected={selectedId === NEW_SPREAD_ID}
-              onSelect={() => onSelect(NEW_SPREAD_ID)}
+              onAdd={() => onAdd(NEW_SPREAD_ID)}
+              onLeave={() => onLeave(NEW_SPREAD_ID)}
+              canAdd
+              onWrite={onWrite && (() => onWrite(NEW_SPREAD_ID))}
               live={live?.spreadId === NEW_SPREAD_ID ? live.preview : undefined}
               editor={editor?.spreadId === NEW_SPREAD_ID ? editor : undefined}
               {...shared}

@@ -50,7 +50,7 @@ The reference wireframe is **not** a photo grid beside a canvas. The cards are i
 └──────────────────────┘  └──────────────────────────────┘  └───┘
 ```
 
-The dots are a carousel — one mount holds several items. The far-right strip is a collapsible camera rail with a shutter.
+The numbers are a carousel — one mount holds up to six items; on the writer iPads a "+" after them aims the camera there. The far-right strip is a collapsible camera rail with a shutter.
 
 ---
 
@@ -199,7 +199,7 @@ A **poster frame** is extracted client-side from the first frame — or a moment
 
 **The 15-second cap is checked on the file.** At commit the server reads the duration from the video's own header (`mvhd`, or `mehd` in a fragmented file) with a few small range reads; when the file states one, it overrules what the iPad claimed.
 
-**The viewfinder is the destination mount** (DECISIONS D18). The camera is on only while the rail is open, the iPad is signed in and the page is visible.
+**The viewfinder is the destination mount** (DECISIONS D18). The camera is on only while a spread's "+" is pressed, the rail is open, the iPad is signed in and the page is visible. It is shown unmirrored, as it is saved. The six-item limit per spread is enforced by the writer's interface (no "+" on a full spread), not refused by the server: a capture already on its way is never thrown away.
 
 ### Nothing is lost
 
@@ -238,7 +238,7 @@ Tools: pen, pencil, eraser, three inks, undo, clear, save.
 - The saved PNG is 2000 × 1500 with a **transparent** background — ink only; the album supplies the paper.
 - **Save** goes through the same IndexedDB queue as a photo: create the entry if new → PUT the PNG → POST the strokes. Every save is a new version of the **whole page**, never a delta.
 - **Drafts.** The page in progress is kept in `localStorage` (`guestbook-page:{entryId}`) after every stroke, so a reload or a crash costs nothing. After Save it is kept, marked saved, until the server confirms that version; then it is removed. `localStorage` rather than IndexedDB because it is synchronous — the stroke is written before the next event can be lost — and a page's strokes are small.
-- **Carrying on.** Selecting a spread whose page already has a saved version fetches that version's strokes and continues from them. Unsaved strokes on this iPad always win; otherwise the newer of this iPad's own last save and the server's latest. If the strokes cannot be fetched and this iPad has no copy, the page is not writable until they can be — a new version without them would hide the saved writing from the album.
+- **Carrying on.** Opening (tapping) a page that already has a saved version fetches that version's strokes and continues from them. Unsaved strokes on this iPad always win; otherwise the newer of this iPad's own last save and the server's latest. If the strokes cannot be fetched and this iPad has no copy, the page is not writable until they can be — a new version without them would hide the saved writing from the album.
 - While a pointer is down, the live camera preview beside the page pauses (CLAUDE.md: nothing animates near the canvas while drawing).
 
 `signature_pad` (MIT) is the documented swap-in fallback if the Pencil feel disappoints on real hardware.

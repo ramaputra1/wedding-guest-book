@@ -24,7 +24,8 @@ interface Props {
   busy: boolean;
   onShutter: () => void;
   /** Where the next capture goes, e.g. "Spread 3". */
-  destination: string;
+  /** "Spread 3", or null while no spread's "+" is pressed. */
+  destination: string | null;
   status: RailStatus;
   copy: CameraCopy;
 }
@@ -108,9 +109,15 @@ export function CameraRail({
         <Shutter mode={mode} recording={recording} counting={counting} timer={timer} progress={progress} busy={busy} onPress={onShutter} copy={copy} />
 
         <p class="rail__destination" aria-live="polite">
-          <span class="visually-hidden">{copy.destination}: </span>
-          <span aria-hidden="true">→ </span>
-          {destination}
+          {destination === null ? (
+            copy.noDestination
+          ) : (
+            <>
+              <span class="visually-hidden">{copy.destination}: </span>
+              <span aria-hidden="true">→ </span>
+              {destination}
+            </>
+          )}
         </p>
       </div>
 

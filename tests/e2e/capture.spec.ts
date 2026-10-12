@@ -3,10 +3,11 @@
  * real Functions → D1 + R2 → the album. Phase 4 acceptance criteria.
  */
 import { expect, test } from '@playwright/test';
-import { allSaved, cameraReady, savedMediaCount, serverEntries, serverStats, shootAndWaitSaved, shutter, signIn } from './helpers';
+import { addTo, allSaved, cameraReady, savedMediaCount, serverEntries, serverStats, shootAndWaitSaved, shutter, signIn } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
+  await addTo(page);
   await cameraReady(page);
 });
 
@@ -24,15 +25,15 @@ test('a photo is captured, resized, saved, and lands in the selected spread', as
   expect(Math.max(photo.width!, photo.height!)).toBeLessThanOrEqual(2560);
 
   // 2nd: choose "New spread" explicitly → a second spread.
-  await page.locator('[data-spread-id="new-spread"] .mount').click();
+  await addTo(page, 'new-spread');
   await cameraReady(page);
   await shootAndWaitSaved(page);
   const second = (await serverEntries(page)).at(-1)!;
   expect(second.id).not.toBe(first.id);
 
   // 3rd: select the FIRST spread, capture → it must land there, not in the latest.
-  await page.locator(`[data-spread-id="${first.id}"] .mount`).click();
-  await expect(page.locator(`[data-spread-id="${first.id}"] .mount`)).toHaveAttribute('aria-pressed', 'true');
+  await addTo(page, first.id);
+  await expect(page.locator(`[data-spread-id="${first.id}"] .mount`)).toHaveAttribute('data-selected', 'true');
   await cameraReady(page);
   await shootAndWaitSaved(page);
   const after = await serverEntries(page);

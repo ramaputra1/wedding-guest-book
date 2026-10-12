@@ -145,11 +145,13 @@ A photo or video mounted on the album leaf, with **real photo corners** — smal
 - **Empty mount:** four bare corners on the leaf, nothing else. This is a visible invitation and needs no "Add a photo" instruction text.
 - **Filled mount:** the media sits under the corners, which overlap its edges as gummed corners would.
 - **At rest:** corners are `--on-leaf-soft`. (`--brass-dim` was the first idea, but at 2.8:1 on the leaf it fails WCAG's 3:1 minimum for UI graphics; `--on-leaf-soft` is 5.6:1.)
-- **Selected:** the four corners turn `--brass` and a hairline brass rule appears beneath the mount. No glow, no outline, no scale transform.
-- **Carousel:** when a mount holds several items, dots sit beneath it. The active dot is a filled `--brass` disc; the rest are `--on-leaf-soft` rings at full strength. (Low-opacity dots would fall below 3:1; ring-versus-disc also means the active dot is never told apart by colour alone.)
+- **Selected** (the camera's destination): the four corners turn `--brass` and a hairline brass rule appears beneath the mount. No glow, no outline, no scale transform.
+- **Numbers (owner request, replacing dots):** beneath a mount, its items are numbered `1 2 3 …` in Public Sans, tabular, `--on-leaf-soft`. The item on show is `--on-leaf`, semibold, with a `--brass` hairline underneath. On the public album the row appears only when there are two or more items; on the writer iPads every item is numbered.
+- **At most six:** a spread holds six photos and videos together (`site.capture.maxPerSpread`).
+- **"+" (writer iPads):** after the numbers, a "+" is the *only* way to aim the camera at a spread — the mount itself is not a control. Pressed, it carries the same semibold-plus-brass-hairline state, and the mount shows Selected. Pressing it again lets go. Choosing a number in that spread shows the item and turns the camera away until "+" is pressed again. A full spread has no "+". With no "+" pressed the camera is off, the shutter is disabled, and the rail reads "Tap + on a spread".
 - **Video items** carry a small duration badge (`0:15`) on one corner in Public Sans. Nothing else distinguishes them — a video is a memory, not a media type.
 - **Shape:** the mount is a fixed 4:3 space, so spreads line up; the print inside keeps its own shape. A landscape photo spans the width, a portrait one stands upright at full height, and the corners hug the print. Nothing is cropped — a guest's face is never cut off to fit a frame.
-- **Viewfinder:** while the camera is on, the live picture appears in the mount where the next capture will land — the destination is shown, not described. The front camera is mirrored, as people expect; the photo taken is not.
+- **Viewfinder:** while the camera is on, the live picture appears in the mount where the next capture will land — the destination is shown, not described. The preview is **never mirrored**, not even from the front camera (owner request): the guest sees exactly the picture that will be saved.
 - **Landing:** after a capture, the new item shows in its mount for about two and a half seconds before the viewfinder returns, so the guest sees what they made.
 - **Open (public album):** tapping a print opens it full size in a viewer — a plain `--leaf-edge` ground, the photo or a playing video, and one "Close" button. Escape closes it.
 
@@ -157,7 +159,7 @@ A photo or video mounted on the album leaf, with **real photo corners** — smal
 
 Warm `--writing-paper`, `--radius-paper`, with a very faint baseline rule to suggest ruled paper. Ink defaults to `--ink`. The surface must read as paper before it reads as a canvas — no toolbar chrome crowding its edges, no visible border box.
 
-**Writing on it (writer iPads).** The page of the destination spread — the same spread the camera is aimed at — takes the pen. Its tools sit in one quiet row *below* the paper, never on it: Pen · Pencil · Eraser, three inks, Undo, Clear, Save.
+**Writing on it (writer iPads).** A page takes the pen when it is tapped — the sheet itself is the button — independently of where the camera is aimed (owner request). Tapping another page moves the pen there; unsaved strokes stay on the iPad as a draft. If a photo and a page are both started on "New spread", they stay together on the spread the first save creates. Its tools sit in one quiet row *below* the paper, never on it: Pen · Pencil · Eraser, three inks, Undo, Clear, Save.
 
 - **Inks:** `--ink` (blue-black), `--ink-sepia`, `--ink-oxblood` — all dark enough to read on `--writing-paper` at any thickness. The chosen one carries a brass ring (shape, not colour alone).
 - **Pencil** is graphite (`--ink-soft`), thinner and a little translucent. **Eraser** removes ink, never paper.

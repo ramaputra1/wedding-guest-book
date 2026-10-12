@@ -200,6 +200,8 @@ Full system in `docs/DESIGN.md`.
 
 **After capturing into "New spread"**, that spread becomes the destination, so a guest's several shots stay together until another spread is chosen.
 
+**Revised after Phase 5 (owner request, branch `fix-grid`):** the destination is chosen only with a spread's "+", never by tapping the mount, and there is none by default — the camera is off until a "+" is pressed. The preview is no longer mirrored, so it matches the saved file; mirroring the saved file instead was rejected because video would have to be re-encoded through a canvas on the iPad, and any writing in the background would read backwards in the album for good. A spread holds at most six items, a limit kept by the interface only: the server still accepts a seventh rather than lose a capture that was already queued (two iPads could, rarely, both add the sixth).
+
 ---
 
 ## D19 — A page version is the whole page, continued from the latest

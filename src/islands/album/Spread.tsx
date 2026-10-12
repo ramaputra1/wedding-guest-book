@@ -6,7 +6,7 @@ import { WritingCanvas } from './WritingCanvas';
 import { WritingPage } from './WritingPage';
 import type { Stroke } from '../../lib/canvas/strokes';
 
-/** Turns this spread's page into a canvas: the writer's destination spread only. */
+/** Turns this spread's page into a canvas: the page the writer chose by tapping it. */
 export interface PageEditor {
   entryId: string | null;
   hasSavedVersion: boolean;
@@ -23,7 +23,11 @@ interface Props {
   name: string;
   mode: AlbumMode;
   selected: boolean;
-  onSelect: () => void;
+  onAdd: () => void;
+  onLeave: () => void;
+  canAdd: boolean;
+  /** Write mode: the page was tapped — write on it. */
+  onWrite?: () => void;
   live?: LivePreview;
   editor?: PageEditor;
   justSaved?: boolean;
@@ -34,7 +38,7 @@ interface Props {
 }
 
 /** One entry as an open spread: media left, its handwriting right, the gutter between. */
-export function Spread({ entry, spreadId, name, mode, selected, onSelect, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, canAdd, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   return (
     <article class="spread" aria-label={name} data-spread-id={spreadId}>
       <div class="spread__media">
@@ -43,7 +47,9 @@ export function Spread({ entry, spreadId, name, mode, selected, onSelect, live, 
           mode={mode}
           spreadName={name}
           selected={selected}
-          onSelect={onSelect}
+          onAdd={onAdd}
+          onLeave={onLeave}
+          canAdd={canAdd}
           live={live}
           justSaved={justSaved}
           onOpen={onOpen}
@@ -69,7 +75,14 @@ export function Spread({ entry, spreadId, name, mode, selected, onSelect, live, 
             copy={copy}
           />
         ) : (
-          <WritingPage page={entry?.page ?? null} blankLabel={copy.blankPage} onRetry={onRetry} copy={copy} />
+          <WritingPage
+            page={entry?.page ?? null}
+            blankLabel={copy.blankPage}
+            onRetry={onRetry}
+            onWrite={mode === 'write' ? onWrite : undefined}
+            writeLabel={`${copy.page.write}, ${name}`}
+            copy={copy}
+          />
         )}
       </div>
     </article>

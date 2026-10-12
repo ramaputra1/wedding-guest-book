@@ -240,10 +240,6 @@
   font: inherit;
 }
 
-button.mount {
-  cursor: pointer;
-}
-
 button.mount--open {
   cursor: zoom-in;
 }
@@ -285,12 +281,6 @@ button.mount--open {
    capture that just landed is shown. */
 .mount__print--behind {
   opacity: 0;
-}
-
-/* The front camera is shown as a mirror, which is what people expect to see.
-   The photo taken is not mirrored. */
-.mount__live--mirrored {
-  transform: scaleX(-1);
 }
 
 /* A video looks like any other print; only this badge says it moves. */
@@ -344,13 +334,13 @@ button.mount--open {
 }
 
 /* Selected: brass corners and a brass hairline beneath. Two signals, so the
-   state never rests on colour alone; aria-pressed carries it to assistive
-   technology. No glow, no outline, no scale. */
-.mount[aria-pressed='true'] .corner {
+   state never rests on colour alone; the pressed "+" beneath carries it to
+   assistive technology. No glow, no outline, no scale. */
+.mount[data-selected='true'] .corner {
   background-color: var(--brass);
 }
 
-.mount[aria-pressed='true'] .mount__frame::after {
+.mount[data-selected='true'] .mount__frame::after {
   content: '';
   position: absolute;
   inset-inline: 0;
@@ -423,34 +413,41 @@ button.mount--open {
 }
 
 /* ---------------------------------------------------------------------------
- * Carousel dots
+ * Carousel numbers, and the writer's "+" (owner request: numbers, not dots)
  * ------------------------------------------------------------------------- */
 
-.dots {
+.numbers {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   min-block-size: var(--space-7);
   margin-block-start: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-ui);
 }
 
 /* Folded, an empty row would only push the page away from its mount. */
-.dots:empty {
+.numbers:empty {
   display: none;
 }
 
 /* Wide, the row is always present, so single- and multi-item spreads line up. */
 @media (orientation: landscape) and (min-width: 48rem) {
-  .dots {
+  .numbers {
     margin-block-start: var(--space-4);
   }
 
-  .dots:empty {
+  .numbers:empty {
     display: flex;
   }
 }
 
-/* A full-size touch target around a small drawn dot. */
-.dots__dot {
+/* Full-size touch targets around a small numeral or plus sign. */
+.numbers__item,
+.numbers__add {
+  position: relative;
   display: grid;
   place-items: center;
   inline-size: var(--space-7);
@@ -458,20 +455,30 @@ button.mount--open {
   padding: 0;
   border: 0;
   background: none;
+  color: var(--on-leaf-soft);
+  font: inherit;
   cursor: pointer;
 }
 
-.dots__dot::before {
-  content: '';
-  inline-size: var(--space-2);
-  block-size: var(--space-2);
-  border: var(--rule-width) solid var(--on-leaf-soft);
-  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
-  border-radius: 50%;
+.numbers__add {
+  font-size: var(--step-1);
 }
 
-.dots__dot[aria-current='true']::before {
-  border-color: var(--brass);
+/* The item on show, and a pressed "+": brighter, heavier, and underlined in
+   brass — the same state mark as the rail's choices, never colour alone. */
+.numbers__item[aria-current='true'],
+.numbers__add[aria-pressed='true'] {
+  color: var(--on-leaf);
+  font-weight: 600;
+}
+
+.numbers__item[aria-current='true']::after,
+.numbers__add[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
   background-color: var(--brass);
 }
 
@@ -501,6 +508,21 @@ button.mount--open {
 
 .writing-page__ink {
   object-fit: contain;
+}
+
+/* Writer iPads: the sheet itself is the button that opens it for writing. */
+.writing-page__choose {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+.writing-page__choose:focus-visible {
+  outline-offset: calc(var(--focus-width) * -1);
 }
 
 /* ---------------------------------------------------------------------------

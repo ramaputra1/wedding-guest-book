@@ -5,11 +5,14 @@ interface Props {
   page: AlbumPage | null;
   blankLabel: string;
   onRetry?: (versionId: string) => void;
+  /** Writer iPads: tapping the page opens it for writing. */
+  onWrite?: () => void;
+  writeLabel?: string;
   copy?: AlbumCopy;
 }
 
-/** Warm writing paper with faint ruled lines. Phase 5 puts the canvas here. */
-export function WritingPage({ page, blankLabel, onRetry, copy }: Props) {
+/** Warm writing paper with faint ruled lines, and the saved handwriting on it. */
+export function WritingPage({ page, blankLabel, onRetry, onWrite, writeLabel, copy }: Props) {
   const pending = page?.pending;
   return (
     <div class="writing-page">
@@ -22,6 +25,9 @@ export function WritingPage({ page, blankLabel, onRetry, copy }: Props) {
       ) : (
         <span class="visually-hidden">{blankLabel}</span>
       )}
+      {/* The whole sheet is the target, laid over it: a page is chosen by
+          touching the page itself, not anything beside it. */}
+      {onWrite && <button type="button" class="writing-page__choose" aria-label={writeLabel} onClick={onWrite} />}
       {pending && copy && (
         pending.state === 'failed' ? (
           <div class="mount-status mount-status--failed" role="alert">

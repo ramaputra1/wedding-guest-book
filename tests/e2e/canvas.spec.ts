@@ -7,7 +7,7 @@
  * palm — is listed in the phase report as NEEDS DEVICE TEST.
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
-import { cameraReady, queued, serverEntries, serverStats, signIn } from './helpers';
+import { addTo, cameraReady, openPage, queued, serverEntries, serverStats, signIn } from './helpers';
 
 const PEN = '.writing-page--live canvas.writing-page__pen';
 const INK = '.writing-page--live canvas.writing-page__ink';
@@ -15,7 +15,7 @@ const INK = '.writing-page--live canvas.writing-page__ink';
 type Fraction = [number, number];
 
 /**
- * Waits for the album's own smooth scroll to the destination spread to end,
+ * Waits for any smooth scroll of the album (the camera brings its spread into view) to end,
  * then brings the whole page on screen: input aimed at a page still moving,
  * or below the fold, would land somewhere else.
  */
@@ -136,8 +136,7 @@ function pngSize(page: Page, url: string) {
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await cameraReady(page);
-  await expect(page.locator(PEN)).toBeVisible();
+  await openPage(page);
   await deskInView(page);
 });
 
@@ -241,7 +240,7 @@ test('unsaved strokes survive a reload', async ({ page }) => {
   await drawWithMouse(page, [0.3, 0.3], [0.7, 0.4]);
   await expect.poll(() => strokeCount(page)).toBe(1);
   await page.reload();
-  await expect(page.locator(PEN)).toBeVisible();
+  await openPage(page);
   await deskInView(page);
   await expect.poll(() => strokeCount(page)).toBe(1);
   await expect(page.locator('.writing-tool--save')).toBeEnabled();
@@ -259,8 +258,7 @@ test('the saved stroke JSON redraws the same page the PNG shows', async ({ page 
 
   // A fresh load draws the page from the server's stroke JSON alone.
   await page.reload();
-  await page.locator(`[data-spread-id="${entryId}"] .mount`).click();
-  await expect(page.locator(`[data-spread-id="${entryId}"] ${PEN}`)).toBeVisible();
+  await openPage(page, entryId);
   await deskInView(page);
   await expect.poll(() => strokeCount(page)).toBe(3);
 
@@ -287,6 +285,9 @@ test('the saved stroke JSON redraws the same page the PNG shows', async ({ page 
 });
 
 test('the pen writes with pressure, the camera preview holds still while it is down', async ({ page }) => {
+  await addTo(page);
+  await cameraReady(page);
+  await deskInView(page);
   const cdp = await page.context().newCDPSession(page);
   const video = page.locator('video.mount__live');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
@@ -321,7 +322,7 @@ test('coalesced pointer events are used: every sample between frames becomes a p
     void original;
   });
   await page.reload();
-  await cameraReady(page);
+  await openPage(page);
   await deskInView(page);
   const cdp = await page.context().newCDPSession(page);
   await drawWithPen(cdp, page, [0.1, 0.5], [0.6, 0.5], 10);
@@ -404,8 +405,7 @@ test('offline: a saved page waits in the queue as "Saving…", survives a reload
 
   // A reload while still offline: the page comes back from the iPad's own copy.
   await page.reload();
-  await page.locator(`[data-spread-id="${entryId}"] .mount`).click();
-  await expect(page.locator(`[data-spread-id="${entryId}"] ${PEN}`)).toBeVisible();
+  await openPage(page, entryId);
   await expect.poll(() => strokeCount(page)).toBe(1);
 
   const before = (await serverStats(page)).canvasVersions;

@@ -5,9 +5,11 @@ import { PhotoCorners } from './PhotoCorners';
 
 /** The live camera, shown in the mount where the next capture will land. */
 export interface LivePreview {
+  /**
+   * Never mirrored, not even the front camera: the guest sees exactly the
+   * picture that will be saved (owner request).
+   */
   stream: MediaStream;
-  /** The front camera is shown mirrored, as people expect; the photo itself is not. */
-  mirrored: boolean;
   /** Width ÷ height of the camera frame. */
   aspect: number;
   /**
@@ -26,8 +28,14 @@ interface Props {
   mode: AlbumMode;
   /** "Spread 3" — the mount's accessible name. */
   spreadName: string;
+  /** Write mode: this mount is where the camera's next capture lands. */
   selected: boolean;
-  onSelect: () => void;
+  /** Write mode: the "+" was pressed — make this the destination, or stop being it. */
+  onAdd: () => void;
+  /** Write mode: a number was chosen here while the camera was aimed at it. */
+  onLeave: () => void;
+  /** Write mode: room for another item (a spread holds at most `maxItems`). */
+  canAdd: boolean;
   live?: LivePreview;
   /** A capture in this mount was just confirmed saved: the corners flash brass. */
   justSaved?: boolean;
@@ -92,7 +100,7 @@ function Live({ live, behind }: { live: LivePreview; behind: boolean }) {
   }, [live.stream]);
   return (
     <span class={behind ? 'mount__print mount__print--live mount__print--behind' : 'mount__print mount__print--live'}>
-      <video ref={video} class={live.mirrored ? 'mount__live mount__live--mirrored' : 'mount__live'} muted playsInline autoPlay aria-hidden="true" />
+      <video ref={video} class="mount__live" muted playsInline autoPlay aria-hidden="true" />
       {live.countdown !== undefined && !behind && (
         // Announced once by the page when the countdown starts; each second is visual only.
         <span class="mount__countdown" aria-hidden="true">
@@ -137,11 +145,12 @@ function SaveStatus({ media, copy, onRetry, onDiscard }: { media: AlbumMedia[]; 
 
 /**
  * A mounted print, or — with no media — four bare corners on the leaf.
- * Several items become a carousel with dots beneath. In write mode the mount
- * is a toggle button: selecting it makes it the camera's destination. On the
- * public album it opens the full photo or video.
+ * Several items become a carousel with numbers beneath. In write mode a "+"
+ * after the numbers is the only way to aim the camera here; choosing a
+ * number shows that item and turns the camera away again. On the public
+ * album the mount opens the full photo or video.
  */
-export function MediaMount({ media, mode, spreadName, selected, onSelect, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, canAdd, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const [index, setIndex] = useState(0);
   // A new capture landing here comes into view on its own.
   const previousCount = useRef(media.length);
@@ -163,6 +172,10 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
       ? `, ${copy.video} ${formatDuration(current.durationMs)}`
       : '';
   const mountName = `${spreadName}, ${media.length === 0 ? copy.emptyMount : itemCount}${videoPart}`;
+  const writing = mode === 'write';
+  // On the iPads even one item gets its number, beside the "+"; on the public
+  // album a single print needs no navigation.
+  const showNumbers = writing ? media.length > 0 : media.length > 1;
 
   const frame = (
     <span class={shape.class} style={{ aspectRatio: shape.aspect }}>
@@ -174,10 +187,11 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
 
   let mount;
   if (mode === 'write') {
+    // Not a control: the "+" below is. The print's own alt text names it.
     mount = (
-      <button type="button" class="mount" aria-pressed={selected} aria-label={mountName} data-saved={justSaved ? 'true' : undefined} onClick={onSelect}>
+      <div class="mount" data-selected={selected ? 'true' : undefined} data-saved={justSaved ? 'true' : undefined}>
         {frame}
-      </button>
+      </div>
     );
   } else if (current && !current.pending && onOpen) {
     const action = current.kind === 'video' ? copy.viewer.playVideo : copy.viewer.openPhoto;
@@ -196,18 +210,28 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
         {mount}
         <SaveStatus media={media} copy={copy} onRetry={onRetry} onDiscard={onDiscard} />
       </div>
-      <div class="dots" role={media.length > 1 ? 'group' : undefined} aria-label={media.length > 1 ? `${spreadName}, ${copy.items}` : undefined}>
-        {media.length > 1 &&
+      <div class="numbers" role={showNumbers || writing ? 'group' : undefined} aria-label={showNumbers || writing ? `${spreadName}, ${media.length === 0 ? copy.emptyMount : itemCount}` : undefined}>
+        {showNumbers &&
           media.map((item, i) => (
             <button
               key={item.id}
               type="button"
-              class="dots__dot"
-              aria-current={i === index ? 'true' : undefined}
+              class="numbers__item"
+              aria-current={i === index && !showLive ? 'true' : undefined}
               aria-label={`${copy.showItem} ${i + 1} ${copy.of} ${media.length}`}
-              onClick={() => setIndex(i)}
-            />
+              onClick={() => {
+                setIndex(i);
+                if (selected) onLeave();
+              }}
+            >
+              {i + 1}
+            </button>
           ))}
+        {writing && canAdd && (
+          <button type="button" class="numbers__add" aria-pressed={selected} aria-label={`${copy.addTo} ${spreadName}`} onClick={onAdd}>
+            <span aria-hidden="true">+</span>
+          </button>
+        )}
       </div>
     </>
   );

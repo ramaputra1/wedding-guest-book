@@ -8,10 +8,11 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { chromium, expect, test } from '@playwright/test';
-import { allSaved, cameraReady, queued, serverEntries, shutter, signIn } from './helpers';
+import { addTo, allSaved, cameraReady, queued, serverEntries, shutter, signIn } from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
+  await addTo(page);
   await cameraReady(page);
 });
 
@@ -93,6 +94,7 @@ test('the browser is closed with captures queued: they survive and finish after 
     let context = await chromium.launchPersistentContext(profile, options);
     let page = context.pages()[0] ?? (await context.newPage());
     await signIn(page);
+    await addTo(page);
     await cameraReady(page);
     await context.setOffline(true);
     await shutter(page);

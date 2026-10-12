@@ -24,6 +24,8 @@ export type HeroTextPlacement = 'lower' | 'center';
 /** Words on the camera rail. Sentence case, active voice (DESIGN.md, Words). */
 export interface CameraCopy {
   label: string;
+  /** In the rail while no spread's "+" is pressed. */
+  noDestination: string;
   show: string;
   hide: string;
   mode: string;
@@ -67,6 +69,8 @@ export interface SaveCopy {
 export interface PageCopy {
   /** "Writing page, Spread 3" — prefix for the canvas's text alternative. */
   label: string;
+  /** "Write on this page, Spread 3" — a page the writer can tap to open. */
+  write: string;
   strokes: string;
   stroke: string;
   hint: string;
@@ -98,6 +102,8 @@ export interface ViewerCopy {
 /** Which camera the iPads use. "user" faces the guests, as a guest book is filmed. */
 export interface CaptureConfig {
   facing: 'user' | 'environment';
+  /** A spread holds at most this many photos and videos together (owner request). */
+  maxPerSpread: number;
   /**
    * The self-timer choices for photos, in seconds; the first is the default.
    * A photo is always taken on a timer, so guests have time to pose.
@@ -128,6 +134,8 @@ export interface AlbumCopy {
   items: string;
   showItem: string;
   of: string;
+  /** "Add a photo or video to Spread 3" — the "+" beneath a mount. */
+  addTo: string;
   video: string;
   seconds: string;
   blankPage: string;
@@ -225,6 +233,7 @@ export const site = {
     items: 'items',
     showItem: 'Show item',
     of: 'of',
+    addTo: 'Add a photo or video to',
     video: 'Video',
     seconds: 'seconds',
     blankPage: 'Blank page',
@@ -235,6 +244,7 @@ export const site = {
     handwrittenPage: 'A handwritten page',
     camera: {
       label: 'Camera',
+      noDestination: 'Tap + on a spread',
       show: 'Show camera',
       hide: 'Hide camera',
       mode: 'Capture mode',
@@ -268,6 +278,7 @@ export const site = {
     },
     page: {
       label: 'Writing page',
+      write: 'Write on this page',
       strokes: 'strokes',
       stroke: 'stroke',
       hint: 'Write with Apple Pencil or a finger.',
@@ -305,5 +316,5 @@ export const site = {
 
   devices: { ipad1: 'iPad 1', ipad2: 'iPad 2' },
 
-  capture: { facing: 'user', photoTimers: [3, 5] },
+  capture: { facing: 'user', maxPerSpread: 6, photoTimers: [3, 5] },
 } as const satisfies SiteConfig;
