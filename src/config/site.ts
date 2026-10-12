@@ -3,8 +3,8 @@
  * details, edit this file and nothing else — components read from it and
  * never hard-code a name, date, or line of copy.
  */
-import type { ImageMetadata } from 'astro';
-import heroPhoto from '../assets/hero/hero.jpg';
+import type { ImageMetadata } from "astro";
+import heroPhoto from "../assets/hero/hero.jpg";
 
 /** A calendar date as `YYYY-MM-DD`. */
 export type IsoDate = `${number}-${number}-${number}`;
@@ -13,13 +13,13 @@ export type IsoDate = `${number}-${number}-${number}`;
  * Which part of the photograph to keep when a narrow screen crops it.
  * The couple in the current photograph stand at the horizontal centre.
  */
-export type HeroFocus = 'center' | 'left' | 'right';
+export type HeroFocus = "center" | "left" | "right";
 
 /**
  * Where the names sit on the photograph. Choose the region where the picture
  * is already dark and quiet, so the type reads without darkening the photo.
  */
-export type HeroTextPlacement = 'lower' | 'center';
+export type HeroTextPlacement = "lower" | "center";
 
 /** Words on the camera rail. Sentence case, active voice (DESIGN.md, Words). */
 export interface CameraCopy {
@@ -116,7 +116,7 @@ export interface ViewerCopy {
 
 /** Which camera the iPads use. "user" faces the guests, as a guest book is filmed. */
 export interface CaptureConfig {
-  facing: 'user' | 'environment';
+  facing: "user" | "environment";
   /** A spread holds at most this many photos and videos together (owner request). */
   maxPerSpread: number;
   /**
@@ -214,12 +214,12 @@ export interface SiteConfig {
   capture: CaptureConfig;
 }
 
-const names = ['Rama', 'Assela'] as const;
-const joiner = '&';
-const dateDisplay = '19 December 2026';
+const names = ["Rama", "Assela"] as const;
+const joiner = "&";
+const dateDisplay = "19 December 2026";
 
 export const site = {
-  lang: 'en',
+  lang: "en",
   title: `${names[0]} ${joiner} ${names[1]}`,
   description: `The guest book from ${names[0]} and ${names[1]}'s wedding, ${dateDisplay}.`,
 
@@ -229,121 +229,129 @@ export const site = {
   },
 
   date: {
-    iso: '2026-12-19',
+    iso: "2026-12-19",
     display: dateDisplay,
   },
 
   hero: {
     image: heroPhoto,
     alt: `${names[0]} and ${names[1]} holding hands on a lawn by the sea, framed by tall trees.`,
-    focus: 'center',
-    textPlacement: 'lower',
+    focus: "center",
+    textPlacement: "lower",
   },
 
-  intro: 'Every page here was written by hand on the day.',
+  intro: "Every page here was written by hand on the day.",
 
   album: {
-    emptyAlbum: 'Nothing here yet.',
-    spread: 'Spread',
-    newSpread: 'New spread',
-    emptyMount: 'empty',
-    item: 'item',
-    items: 'items',
-    showItem: 'Show item',
-    of: 'of',
-    addTo: 'Add a photo or video to',
-    playback: { play: 'Play', pause: 'Pause' },
+    emptyAlbum: "Nothing here yet.",
+    spread: "Spread",
+    newSpread: "New spread",
+    emptyMount: "empty",
+    item: "item",
+    items: "items",
+    showItem: "Show item",
+    of: "of",
+    addTo: "Add a photo or video to",
+    playback: { play: "Play", pause: "Pause" },
     remove: {
-      label: 'Delete',
-      buttonPhoto: 'Delete this photo',
-      buttonVideo: 'Delete this video',
-      questionPhoto: 'Delete this photo?',
-      questionVideo: 'Delete this video?',
-      detail: 'It leaves the album on both iPads and online. If it was a mistake, it can still be brought back.',
-      yes: 'Yes, delete',
-      no: 'No',
+      label: "Delete (1)",
+      buttonPhoto: "Delete this photo",
+      buttonVideo: "Delete this video",
+      questionPhoto: "Delete this photo?",
+      questionVideo: "Delete this video?",
+      detail:
+        "It leaves the album on both iPads and online. If it was a mistake, it can still be brought back.",
+      yes: "Yes, delete",
+      no: "No",
       failed: "That didn't delete. Check the wifi and try again.",
     },
-    video: 'Video',
-    seconds: 'seconds',
-    blankPage: 'Blank page',
-    loading: 'Opening the album…',
+    video: "Video",
+    seconds: "seconds",
+    blankPage: "Blank page",
+    loading: "Opening the album…",
     loadFailed: "The album didn't load. Reload the page to try again.",
-    photoAlt: 'A photo from the guest book',
-    videoAlt: 'A video from the guest book',
-    handwrittenPage: 'A handwritten page',
+    photoAlt: "A photo from the guest book",
+    videoAlt: "A video from the guest book",
+    handwrittenPage: "A handwritten page",
     camera: {
-      label: 'Camera',
-      noDestination: 'Tap + on a spread',
-      show: 'Show camera',
-      hide: 'Hide camera',
-      mode: 'Capture mode',
-      photo: 'Photo',
-      video: 'Video',
-      takePhoto: 'Take photo',
-      takePhotoIn: 'Take photo in',
-      cancelTimer: 'Cancel timer',
-      photoIn: 'Photo in',
-      timer: 'Timer',
-      secondsShort: 's',
-      seconds: 'seconds',
-      startRecording: 'Start recording',
-      stopRecording: 'Stop recording',
-      destination: 'Saves to',
-      waiting: 'waiting to save',
-      gaugeOf: 'of',
-      gaugeUnit: 'GB used',
-      storageWarning: 'Uploads are piling up on this iPad. Check the wifi.',
-      cameraRefused: 'The camera is blocked. Allow it in Settings → Safari → Camera; until then the shutter opens the iPad camera.',
-      cameraUnavailable: 'The live camera is not available here; the shutter opens the iPad camera.',
+      label: "Camera",
+      noDestination: "Tap + on a spread",
+      show: "Show camera",
+      hide: "Hide camera",
+      mode: "Capture mode",
+      photo: "Photo",
+      video: "Video",
+      takePhoto: "Take photo",
+      takePhotoIn: "Take photo in",
+      cancelTimer: "Cancel timer",
+      photoIn: "Photo in",
+      timer: "Timer",
+      secondsShort: "s",
+      seconds: "seconds",
+      startRecording: "Start recording",
+      stopRecording: "Stop recording",
+      destination: "Saves to",
+      waiting: "waiting to save",
+      gaugeOf: "of",
+      gaugeUnit: "GB used",
+      storageWarning: "Uploads are piling up on this iPad. Check the wifi.",
+      cameraRefused:
+        "The camera is blocked. Allow it in Settings → Safari → Camera; until then the shutter opens the iPad camera.",
+      cameraUnavailable:
+        "The live camera is not available here; the shutter opens the iPad camera.",
     },
     save: {
-      saving: 'Saving…',
-      saved: 'Saved',
+      saving: "Saving…",
+      saved: "Saved",
       notSavedPhoto: "That photo didn't save. Tap to try again.",
       notSavedVideo: "That video didn't save. Tap to try again.",
-      signInAgain: 'Sign in again to finish saving.',
-      remove: 'Remove',
-      confirmRemove: 'Remove this from the iPad? It was never saved and cannot be recovered.',
+      signInAgain: "Sign in again to finish saving.",
+      remove: "Remove",
+      confirmRemove:
+        "Remove this from the iPad? It was never saved and cannot be recovered.",
     },
     page: {
-      label: 'Writing page',
-      write: 'Write on this page',
-      strokes: 'strokes',
-      stroke: 'stroke',
-      hint: 'Write with Apple Pencil or a finger.',
-      tools: 'Writing tools',
-      pen: 'Pen',
-      pencil: 'Pencil',
-      eraser: 'Eraser',
-      inks: 'Ink',
-      inkBlueBlack: 'Blue-black ink',
-      inkSepia: 'Sepia ink',
-      inkOxblood: 'Oxblood ink',
-      undo: 'Undo',
-      clear: 'Clear',
-      confirmClear: 'Clear the page? Anything already saved stays safe in the album.',
-      save: 'Save',
-      saved: 'Saved',
-      loading: 'Opening the page…',
-      unavailable: "This page's saved writing could not be loaded, so it cannot be added to right now. Check the wifi and select it again.",
+      label: "Writing page",
+      write: "Write on this page",
+      strokes: "strokes",
+      stroke: "stroke",
+      hint: "Write with Apple Pencil or a finger.",
+      tools: "Writing tools",
+      pen: "Pen",
+      pencil: "Pencil",
+      eraser: "Eraser",
+      inks: "Ink",
+      inkBlueBlack: "Blue-black ink",
+      inkSepia: "Sepia ink",
+      inkOxblood: "Oxblood ink",
+      undo: "Undo",
+      clear: "Clear",
+      confirmClear:
+        "Clear the page? Anything already saved stays safe in the album.",
+      save: "Save",
+      saved: "Saved",
+      loading: "Opening the page…",
+      unavailable:
+        "This page's saved writing could not be loaded, so it cannot be added to right now. Check the wifi and select it again.",
       notSaved: "That page didn't save. Tap to try again.",
     },
     viewer: {
-      expand: 'View full screen',
-      close: 'Close',
+      expand: "View full screen",
+      close: "Close",
     },
     signIn: {
-      label: 'Enter the passphrase',
-      submit: 'Sign in',
-      submitting: 'Signing in…',
+      label: "Enter the passphrase",
+      submit: "Sign in",
+      submitting: "Signing in…",
       wrongPassphrase: "That passphrase didn't match. Check it and try again.",
-      unreachable: "The guest book couldn't be reached. Check the wifi and try again.",
-      notConfigured: "Signing in isn't set up yet. The owner needs to finish the Cloudflare setup.",
+      unreachable:
+        "The guest book couldn't be reached. Check the wifi and try again.",
+      notConfigured:
+        "Signing in isn't set up yet. The owner needs to finish the Cloudflare setup.",
     },
   },
 
-  devices: { ipad1: 'iPad 1', ipad2: 'iPad 2' },
+  devices: { ipad1: "iPad 1", ipad2: "iPad 2" },
 
-  capture: { facing: 'user', maxPerSpread: 6, photoTimers: [3, 5] },
+  capture: { facing: "user", maxPerSpread: 6, photoTimers: [3, 5] },
 } as const satisfies SiteConfig;
