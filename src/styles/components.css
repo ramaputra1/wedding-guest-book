@@ -223,9 +223,14 @@
  * Media mount — a print held by four photo corners
  * ------------------------------------------------------------------------- */
 
+/* The mount is a fixed 4:3 space, so every spread lines up. The print inside
+   keeps its own shape (.mount__frame): a landscape photo spans the width, a
+   portrait one stands upright at full height. Nothing is cropped. */
 .mount {
   position: relative;
-  display: block;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
   inline-size: 100%;
   aspect-ratio: 4 / 3;
   padding: 0;
@@ -239,6 +244,25 @@ button.mount {
   cursor: pointer;
 }
 
+button.mount--open {
+  cursor: zoom-in;
+}
+
+/* Its aspect ratio is the item's own, set inline from the photo's size. */
+.mount__frame {
+  position: relative;
+  inline-size: 100%;
+}
+
+.mount__frame--tall {
+  inline-size: auto;
+  block-size: 100%;
+}
+
+.mount-wrap {
+  position: relative;
+}
+
 /* The print: photographic paper with a narrow white border, lifted by the
    fine light edge along its top (--mount-lift), not a grey blur. */
 .mount__print {
@@ -250,10 +274,23 @@ button.mount {
   box-shadow: var(--mount-lift);
 }
 
-.mount__media {
+.mount__media,
+.mount__live {
   inline-size: 100%;
   block-size: 100%;
   object-fit: cover;
+}
+
+/* Still playing, so the shutter can take a frame, but out of sight while the
+   capture that just landed is shown. */
+.mount__print--behind {
+  opacity: 0;
+}
+
+/* The front camera is shown as a mirror, which is what people expect to see.
+   The photo taken is not mirrored. */
+.mount__live--mirrored {
+  transform: scaleX(-1);
 }
 
 /* A video looks like any other print; only this badge says it moves. */
@@ -313,13 +350,76 @@ button.mount {
   background-color: var(--brass);
 }
 
-.mount[aria-pressed='true']::after {
+.mount[aria-pressed='true'] .mount__frame::after {
   content: '';
   position: absolute;
   inset-inline: 0;
   inset-block-end: calc(var(--space-3) * -1);
   block-size: var(--rule-width);
   background-color: var(--brass);
+}
+
+/* Saved: a brief brass confirmation on the corners, then it settles
+   (DESIGN.md, Status). The corners' own transition does the fading. */
+.mount[data-saved='true'] .corner {
+  background-color: var(--brass);
+}
+
+/* ---------------------------------------------------------------------------
+ * Save status — on the mount itself, never a toast (DESIGN.md, Status)
+ * ------------------------------------------------------------------------- */
+
+.mount-status {
+  position: absolute;
+  inset-inline: var(--space-4);
+  inset-block-end: var(--space-4);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+}
+
+/* Saving…: quiet, no spinner. Sits on the print without blocking a tap on it. */
+.mount-status--saving {
+  inset-inline: auto;
+  inset-inline-start: 50%;
+  translate: -50% 0;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-mount);
+  background-color: var(--leaf);
+  color: var(--on-leaf-soft);
+  pointer-events: none;
+}
+
+/* Not saved: persistent until fixed, and impossible to miss. --warn marks the
+   edge; the words stay --on-leaf, because --warn as small text is 4.3:1. */
+.mount-status__retry,
+.mount-status__remove {
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border-radius: var(--radius-button);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mount-status__retry {
+  flex: 1;
+  border: 0;
+  border-inline-start: var(--focus-width) solid var(--warn);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  text-align: start;
+}
+
+.mount-status__remove {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
 }
 
 /* ---------------------------------------------------------------------------
@@ -553,17 +653,26 @@ button.mount {
   display: none;
 }
 
-/* Photo / Video: native radios, so arrow keys work. The chosen one is
-   brighter, heavier and underlined in brass — not colour alone. */
-.rail__mode {
+/* Photo / Video, and the photo timer (3 s / 5 s): native radios, so arrow
+   keys work. The chosen one is brighter, heavier and underlined in brass —
+   not colour alone. */
+.rail__choices {
   display: flex;
   justify-self: start;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.rail__mode,
+.rail__timer {
+  display: flex;
   margin: 0;
   padding: 0;
   border: 0;
 }
 
-.rail__mode-option {
+.rail__mode-option,
+.rail__timer-option {
   position: relative;
   display: grid;
   place-items: center;
@@ -571,10 +680,16 @@ button.mount {
   min-block-size: var(--space-7);
   color: var(--on-leaf-soft);
   font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
 
-.rail__mode-option input {
+.rail__timer-option {
+  min-inline-size: var(--space-7);
+}
+
+.rail__mode-option input,
+.rail__timer-option input {
   position: absolute;
   inset: 0;
   margin: 0;
@@ -582,12 +697,14 @@ button.mount {
   cursor: pointer;
 }
 
-.rail__mode-option:has(input:checked) {
+.rail__mode-option:has(input:checked),
+.rail__timer-option:has(input:checked) {
   color: var(--on-leaf);
   font-weight: 600;
 }
 
-.rail__mode-option:has(input:checked)::after {
+.rail__mode-option:has(input:checked)::after,
+.rail__timer-option:has(input:checked)::after {
   content: '';
   position: absolute;
   inset-inline: var(--space-3);
@@ -597,9 +714,38 @@ button.mount {
 }
 
 /* The radio itself is invisible, so its focus ring is drawn on the label. */
-.rail__mode-option:has(input:focus-visible) {
+.rail__mode-option:has(input:focus-visible),
+.rail__timer-option:has(input:focus-visible) {
   outline: var(--focus-width) solid var(--brass);
   outline-offset: calc(var(--space-1) * -1);
+}
+
+/* Phones: the bottom bar takes two rows — the choices above, the shutter
+   and the destination below — so it never overflows a narrow screen. */
+@media (max-width: 39.999rem) and (orientation: portrait) {
+  .writer {
+    --rail-bar: calc(var(--space-8) + var(--space-7) + var(--space-3) * 3);
+  }
+
+  .rail__controls {
+    grid-template-areas:
+      'choices choices choices'
+      '. shutter destination';
+    row-gap: var(--space-2);
+  }
+
+  .rail__choices {
+    grid-area: choices;
+    justify-self: center;
+  }
+
+  .rail__controls .shutter {
+    grid-area: shutter;
+  }
+
+  .rail__destination {
+    grid-area: destination;
+  }
 }
 
 .shutter {
@@ -622,23 +768,184 @@ button.mount {
   background-color: var(--photo-paper);
 }
 
-/* Video mode: the ring that Phase 4 depletes over 15 seconds. */
+.shutter:disabled {
+  cursor: progress;
+}
+
+/* While recording the face becomes the rounded "stop" square: a change of
+   shape, so the state is never carried by the ring alone. */
+.shutter[data-recording='true'] .shutter__face {
+  inline-size: 45%;
+  block-size: 45%;
+  border-radius: var(--radius-button);
+}
+
+.shutter__face {
+  transition:
+    inline-size var(--duration-state) var(--ease),
+    block-size var(--duration-state) var(--ease),
+    border-radius var(--duration-state) var(--ease);
+}
+
+/* Video mode: the ring that depletes over the 15 seconds. */
 .shutter__ring {
   position: absolute;
   inset: 0;
   inline-size: 100%;
   block-size: 100%;
   rotate: -90deg;
-  fill: none;
-  stroke: var(--on-leaf);
-  stroke-width: var(--focus-width);
-  vector-effect: non-scaling-stroke;
   opacity: 0;
   transition: opacity var(--duration-state) var(--ease);
 }
 
-.shutter[data-mode='video'] .shutter__ring {
+.shutter__ring circle {
+  fill: none;
+  stroke-width: var(--focus-width);
+  vector-effect: non-scaling-stroke;
+}
+
+/* The spent part of the clock. */
+.shutter__ring-track {
+  stroke: var(--leaf-edge);
+}
+
+.shutter__ring-time {
+  stroke: var(--on-leaf);
+}
+
+.shutter[data-mode='video'] .shutter__ring,
+.shutter[data-counting='true'] .shutter__ring {
   opacity: 1;
+}
+
+/* The photo self-timer, large on the viewfinder: guests see when to smile.
+   (Unlike video, where a number would make guests perform to it.) */
+.mount__countdown {
+  position: absolute;
+  inset: 0;
+  inline-size: fit-content;
+  block-size: fit-content;
+  margin: auto;
+  padding-block: var(--space-2);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-button);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step-5);
+  font-weight: 600;
+  line-height: var(--leading-tight);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Rail status and writer notices
+ * ------------------------------------------------------------------------- */
+
+.rail__status {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--on-leaf-soft);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.rail__status:empty,
+.rail__status[hidden] {
+  display: none;
+}
+
+/* Folded, the status sits in a slim strip just above the bottom bar. */
+/* The exact opposite of the wide breakpoint, written without `not (…)` for older Safari. */
+@media (orientation: portrait), (max-width: 47.999rem) {
+  .rail__status {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 100%;
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--space-4);
+    padding-block: var(--space-1);
+    padding-inline: var(--page-margin);
+    background-color: var(--leaf-raised);
+  }
+
+  .writer {
+    padding-block-end: calc(var(--rail-bar) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.writer__notices {
+  display: grid;
+  gap: var(--space-2);
+  max-inline-size: calc(var(--space-10) * 5);
+  margin-inline: auto;
+  margin-block-end: var(--space-6);
+}
+
+/* Same treatment as every warning here: the --warn edge, readable words. */
+.notice {
+  padding-block: var(--space-2);
+  padding-inline: var(--space-3);
+  border-inline-start: var(--focus-width) solid var(--warn);
+  border-radius: var(--radius-button);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+}
+
+/* ---------------------------------------------------------------------------
+ * Viewer — a photo or video full size, from the public album
+ * ------------------------------------------------------------------------- */
+
+.viewer {
+  inline-size: 100vw;
+  block-size: 100vh;
+  block-size: 100svh;
+  max-inline-size: none;
+  max-block-size: none;
+  margin: 0;
+  padding: var(--page-margin);
+  border: 0;
+  background-color: var(--leaf-edge);
+  color: var(--on-leaf);
+}
+
+.viewer[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  gap: var(--space-4);
+}
+
+/* Solid, not blurred (DESIGN.md: no blur backdrops). */
+.viewer::backdrop {
+  background-color: var(--leaf-edge);
+}
+
+.viewer__media {
+  max-inline-size: 100%;
+  max-block-size: 100%;
+  border-radius: var(--radius-mount);
+}
+
+.viewer__close {
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border: 0;
+  border-radius: var(--radius-button);
+  background-color: var(--photo-paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .rail__destination {
@@ -704,15 +1011,26 @@ button.mount {
     padding-block-end: var(--space-4);
   }
 
-  .rail__mode {
+  .rail__choices {
     flex-direction: column;
     justify-self: auto;
+  }
+
+  .rail__mode {
+    flex-direction: column;
   }
 
   .rail__destination {
     justify-self: auto;
     padding-inline: var(--space-2);
     text-align: center;
+  }
+
+  /* Full rail width, so the gauge wraps inside it rather than spilling out. */
+  .rail__status {
+    align-self: stretch;
+    padding-inline: var(--space-2);
+    padding-block-end: var(--space-4);
   }
 }
 

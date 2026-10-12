@@ -127,7 +127,7 @@ Generated **on the device**, never server-side. A ULID carries a millisecond tim
 
 ```
 photos/{entry_id}/{media_id}.jpg
-videos/{entry_id}/{media_id}.mp4
+videos/{entry_id}/{media_id}.mp4     # .mov only from the native-camera fallback
 posters/{entry_id}/{media_id}.jpg
 thumbs/{entry_id}/{media_id}.jpg
 canvases/{entry_id}/{canvas_id}.png
@@ -187,12 +187,18 @@ The rail carries a **Photo / Video mode toggle**; the shutter changes behaviour 
 
 | Mode | Shutter | Output |
 |---|---|---|
-| Photo | Tap | JPEG, long edge ≤ 2560px, quality ~0.85, ≈1 MB |
+| Photo | Tap → 3 s or 5 s self-timer → shot (tap again to cancel) | JPEG, long edge ≤ 2560px, quality ~0.85, ≈1 MB |
 | Video | Tap to start, tap to stop, auto-stops at 15s | H.264 MP4, 720p, ≈5 MB |
 
 **Video records in-page with `MediaRecorder` at 720p.** Handing off to the native iOS camera would produce HEVC, which does not play reliably in Chrome or Firefox on desktop — guests on other browsers would get a blank player. Recording H.264 avoids a post-wedding transcoding chore entirely. Native capture via `<input type="file" accept="video/*" capture>` remains the automatic fallback if `MediaRecorder` is unavailable or permission is denied.
 
-A **poster frame** is extracted client-side from the first frame, so the grid shows a real still rather than a black rectangle. A thumbnail (~40 KB) is generated for every item; the album grid loads thumbnails only and fetches full media on tap.
+A **poster frame** is extracted client-side from the first frame — or a moment later if the first is black — so the grid shows a real still rather than a black rectangle. A thumbnail (long edge 640 px, ~40–50 KB) is generated for every item; the album grid loads thumbnails only and fetches full media on tap.
+
+**The fallback's video is kept as it comes.** iOS's camera app records QuickTime (`.mov`, often HEVC). It is accepted and stored as `.mov` rather than refused, so a guest's video is never lost when the camera permission was denied — even though desktop Chrome or Firefox may not play HEVC (DECISIONS D17). The in-page recorder always produces H.264 MP4.
+
+**The 15-second cap is checked on the file.** At commit the server reads the duration from the video's own header (`mvhd`, or `mehd` in a fragmented file) with a few small range reads; when the file states one, it overrules what the iPad claimed.
+
+**The viewfinder is the destination mount** (DECISIONS D18). The camera is on only while the rail is open, the iPad is signed in and the page is visible.
 
 ### Nothing is lost
 

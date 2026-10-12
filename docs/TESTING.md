@@ -50,7 +50,7 @@ Then the one that actually matters for the data model: **save the same entry's c
 
 ## 3. Upload failure — nothing is ever lost
 
-`tests/upload-failure.spec.ts`. The requirement is that a capture is not "saved" until storage confirms it, so failure is the interesting path.
+`tests/e2e/upload-failure.spec.ts` (Playwright, real browser and IndexedDB), with the queue's rules also unit-tested in `tests/uploader.spec.ts`. The requirement is that a capture is not "saved" until storage confirms it, so failure is the interesting path.
 
 | Scenario | Expected |
 |---|---|
@@ -68,7 +68,7 @@ Throttle with Playwright's network emulation; kill the connection outright rathe
 
 ## 4. Browser journeys
 
-Playwright, in `tests/e2e/`. **These run on the owner's machine** — Playwright browser binaries cannot be installed in every environment, so don't assume they're available.
+Playwright, in `tests/e2e/`. They run in the **installed Google Chrome** (`channel: 'chrome'`), so no Playwright browser download is needed, with Chrome's fake camera and microphone standing in for the iPad's. `npm run test:e2e` builds the site and starts its own server with throwaway secrets.
 
 Core journey, run against **both** `/ipad1` and `/ipad2`:
 

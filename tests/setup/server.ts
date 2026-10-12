@@ -46,17 +46,23 @@ export function freshState(): { dir: string; remove(): void } {
   return { dir, remove: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
-export async function startServer(secrets: ServerSecrets, persistDir: string): Promise<TestServer> {
+/**
+ * `assetsDir` serves a built site (the browser tests use dist/); without it,
+ * an empty page is served and only the API matters.
+ */
+export async function startServer(secrets: ServerSecrets, persistDir: string, assetsDir?: string): Promise<TestServer> {
   const port = await freePort();
-  const assets = mkdtempSync(join(tmpdir(), 'guestbook-assets-'));
-  writeFileSync(join(assets, 'index.html'), '<!doctype html><title>test</title>');
+  const ownAssets = assetsDir ? null : mkdtempSync(join(tmpdir(), 'guestbook-assets-'));
+  if (ownAssets) writeFileSync(join(ownAssets, 'index.html'), '<!doctype html><title>test</title>');
+  const assets = assetsDir ?? (ownAssets as string);
 
   const child = spawn(
     WRANGLER,
     [
       'pages', 'dev', assets,
       '--port', String(port),
-      '--ip', '127.0.0.1',
+      // localhost, not 127.0.0.1: browsers treat it as a secure context, which the camera needs.
+      '--ip', 'localhost',
       '--persist-to', persistDir,
       '--show-interactive-dev-session=false',
       '--binding', `SESSION_SIGNING_KEY=${secrets.signingKey}`,
@@ -68,7 +74,7 @@ export async function startServer(secrets: ServerSecrets, persistDir: string): P
   child.stdout.on('data', (chunk: Buffer) => (log += chunk.toString()));
   child.stderr.on('data', (chunk: Buffer) => (log += chunk.toString()));
 
-  const url = `http://127.0.0.1:${port}`;
+  const url = `http://localhost:${port}`;
   const deadline = Date.now() + 120_000;
   while (true) {
     if (child.exitCode !== null) throw new Error(`wrangler exited early:\n${log}`);
@@ -90,7 +96,7 @@ export async function startServer(secrets: ServerSecrets, persistDir: string): P
       new Promise<void>((resolve) => {
         if (child.exitCode !== null) return resolve();
         child.once('exit', () => {
-          rmSync(assets, { recursive: true, force: true });
+          if (ownAssets) rmSync(ownAssets, { recursive: true, force: true });
           resolve();
         });
         child.kill('SIGTERM');

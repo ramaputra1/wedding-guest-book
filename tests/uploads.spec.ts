@@ -3,6 +3,7 @@
  * bytes decide its type, sizes and durations are capped, and a saved item's
  * files can never be replaced. Phase 4 adds the network-failure cases.
  */
+import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { call, commitPhoto, createEntry, freshEntries, jpeg, login, mp4, newId, uploadPhotoFiles, type Cookie } from './helpers';
 
@@ -115,5 +116,71 @@ describe('serving files', () => {
     for (const path of ['/api/files/wrangler.toml', '/api/files/photos/x.jpg', `/api/files/other/${entryId}/${entryId}.jpg`]) {
       expect((await call(path)).status).toBe(404);
     }
+  });
+});
+
+describe('video duration is read from the file, not taken on trust', () => {
+  const fixture = () => new Uint8Array(readFileSync('tests/fixtures/fake-camera-3s.mp4'));
+
+  /** Rewrites the movie header's duration in place, keeping its timescale (version 0 or 1). */
+  function withDurationMs(bytes: Uint8Array, ms: number): Uint8Array<ArrayBuffer> {
+    const copy = Uint8Array.from(bytes);
+    const body = Buffer.from(copy).indexOf('mvhd') + 4;
+    const view = new DataView(copy.buffer);
+    if (copy[body] === 1) {
+      const timescale = view.getUint32(body + 20);
+      view.setBigUint64(body + 24, BigInt(Math.round((ms / 1000) * timescale)));
+    } else {
+      const timescale = view.getUint32(body + 12);
+      view.setUint32(body + 16, Math.round((ms / 1000) * timescale));
+    }
+    return copy;
+  }
+
+  async function uploadVideo(original: Uint8Array<ArrayBuffer>, container: 'mp4' | 'mov' = 'mp4') {
+    const id = newId('ipad1');
+    const q = `entryId=${entryId}&kind=video&container=${container}`;
+    const first = await put(`/api/media/${id}/original?${q}`, original, 'video/mp4');
+    await put(`/api/media/${id}/thumb?${q}`, await jpeg(), 'image/jpeg');
+    await put(`/api/media/${id}/poster?${q}`, await jpeg(), 'image/jpeg');
+    return { id, first };
+  }
+
+  const commit = (id: string, durationMs: number, container: 'mp4' | 'mov' = 'mp4') =>
+    call('/api/media', { method: 'POST', cookie, json: { id, entryId, kind: 'video', width: 1280, height: 720, durationMs, container } });
+
+  it("a real recording's own duration is what gets stored", async () => {
+    const { id } = await uploadVideo(Uint8Array.from(fixture()));
+    expect((await commit(id, 1_000)).status).toBe(201);
+    const stored = (await freshEntries(cookie)).flatMap((e) => e.media).find((m) => m.id === id);
+    expect(stored?.durationMs).toBeGreaterThan(2_500);
+    expect(stored?.durationMs).toBeLessThan(3_500);
+  });
+
+  it('a file that says 20 seconds is refused even when the iPad claims 10', async () => {
+    const { id } = await uploadVideo(withDurationMs(fixture(), 20_000));
+    const response = await commit(id, 10_000);
+    expect(response.status).toBe(413);
+    expect(await response.json()).toMatchObject({ code: 'payload_too_large' });
+  });
+
+  it('QuickTime (the native-camera fallback) is kept as .mov, only when declared', async () => {
+    const mov = Uint8Array.from(fixture());
+    mov.set(new TextEncoder().encode('qt  '), 8);
+    const refused = await put(`/api/media/${newId('ipad1')}/original?entryId=${entryId}&kind=video`, mov, 'video/quicktime');
+    expect(refused.status).toBe(415);
+
+    const { id, first } = await uploadVideo(mov, 'mov');
+    expect(first.status).toBe(201);
+    expect((await commit(id, 3_000, 'mov')).status).toBe(201);
+    const stored = (await freshEntries(cookie)).flatMap((e) => e.media).find((m) => m.id === id);
+    expect(stored?.url).toMatch(/\.mov$/);
+    const file = await call(stored!.url);
+    expect(file.headers.get('content-type')).toBe('video/quicktime');
+  });
+
+  it('an unknown container is refused', async () => {
+    const response = await put(`/api/media/${newId('ipad1')}/original?entryId=${entryId}&kind=video&container=avi`, mp4(), 'video/mp4');
+    expect(response.status).toBe(400);
   });
 });

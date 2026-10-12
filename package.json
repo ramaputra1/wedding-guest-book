@@ -12,7 +12,8 @@
     "preview": "wrangler pages dev",
     "typecheck": "astro sync && tsc --noEmit && tsc --noEmit -p functions",
     "test": "vitest run",
-    "test:auth": "vitest run tests/auth.spec.ts"
+    "test:auth": "vitest run tests/auth.spec.ts",
+    "test:e2e": "astro build && playwright test"
   },
   "dependencies": {
     "idb": "8.0.4",
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@astrojs/preact": "6.0.6",
+    "@playwright/test": "1.64.0",
     "@types/node": "22.20.5",
     "astro": "7.3.8",
     "sharp": "0.35.5",
