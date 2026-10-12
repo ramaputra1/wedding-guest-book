@@ -162,7 +162,7 @@ The interface, with hard-coded placeholder data. This is the main design review 
 **Branch:** `phase-4-capture`
 
 **Build**
-- Photo capture via `getUserMedia`, resize to ≤2560px, ~0.85 quality
+- Photo capture via `getUserMedia`, resize to ≤2560px, ~0.85 quality — always on a 3 s or 5 s self-timer (owner request, added during the phase)
 - Thumbnail generation (~40 KB) for every item
 - Video via `MediaRecorder`, 720p H.264, **hard 15-second stop**
 - Poster frame extracted from the first frame

@@ -184,6 +184,24 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D17 — The native-camera fallback's .mov is kept, not refused
+
+**Chosen:** a video arriving through `<input capture>` is stored as QuickTime (`videos/…/{id}.mov`, `video/quicktime`), declared by the client and checked against the file's own `ftyp` brand.
+
+**Why:** the fallback runs exactly when something has already gone wrong — the camera permission refused, or no in-page recorder. Refusing its output would turn that into a lost greeting. Keeping it costs only that desktop Chrome and Firefox may not play iOS's HEVC; Safari and every iPhone will, and the file is intact in the archive. The normal path never produces it: in-page recording is always H.264 MP4 (D5).
+
+---
+
+## D18 — The viewfinder lives in the destination mount
+
+**Chosen:** the live camera picture appears inside the mount where the next capture will land, and the book scrolls it into view. The camera runs only while the rail is open, the iPad is signed in and the page is visible. The front camera faces the guests by default (`site.capture.facing`).
+
+**Why:** DESIGN.md has no separate viewfinder, and the rail is too narrow for one. Showing the picture *in place* answers "where will this go?" without words, and keeps the album, not a camera screen, as the interface. Turning the camera off with the rail saves battery and gives guests an obvious "the camera is off" state.
+
+**After capturing into "New spread"**, that spread becomes the destination, so a guest's several shots stay together until another spread is chosen.
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.

@@ -1,5 +1,6 @@
 import type { AlbumCopy } from '../../config/site';
-import type { AlbumEntry, AlbumMode } from '../../lib/types';
+import type { AlbumEntry, AlbumMedia, AlbumMode } from '../../lib/types';
+import type { LivePreview } from './MediaMount';
 import { Spread } from './Spread';
 
 /** The writer's always-present blank spread at the end of the book. */
@@ -13,10 +14,18 @@ interface Props {
   intro: string;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** The live camera, and the spread it is shown in. */
+  live?: { spreadId: string; preview: LivePreview };
+  /** Entries whose capture was just confirmed saved. */
+  justSaved?: ReadonlySet<string>;
+  onOpen?: (item: AlbumMedia) => void;
+  onRetry?: (mediaId: string) => void;
+  onDiscard?: (mediaId: string) => void;
   copy: AlbumCopy;
 }
 
-export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, copy }: Props) {
+export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+  const shared = { mode, onOpen, onRetry, onDiscard, copy };
   const loaded = entries ?? [];
   const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
   const status = loadFailed ? copy.loadFailed : entries === null ? copy.loading : loaded.length === 0 && mode === 'view' ? copy.emptyAlbum : null;
@@ -46,22 +55,25 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
             <Spread
               key={entry.id}
               entry={entry}
+              spreadId={entry.id}
               name={`${copy.spread} ${i + 1}`}
-              mode={mode}
               selected={selectedId === entry.id}
               onSelect={() => onSelect(entry.id)}
-              copy={copy}
+              live={live?.spreadId === entry.id ? live.preview : undefined}
+              justSaved={justSaved?.has(entry.id)}
+              {...shared}
             />
           ))}
           {mode === 'write' && (
             <Spread
               key={NEW_SPREAD_ID}
               entry={null}
+              spreadId={NEW_SPREAD_ID}
               name={copy.newSpread}
-              mode={mode}
               selected={selectedId === NEW_SPREAD_ID}
               onSelect={() => onSelect(NEW_SPREAD_ID)}
-              copy={copy}
+              live={live?.spreadId === NEW_SPREAD_ID ? live.preview : undefined}
+              {...shared}
             />
           )}
         </div>

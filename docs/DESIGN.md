@@ -146,6 +146,10 @@ A photo or video mounted on the album leaf, with **real photo corners** — smal
 - **Selected:** the four corners turn `--brass` and a hairline brass rule appears beneath the mount. No glow, no outline, no scale transform.
 - **Carousel:** when a mount holds several items, dots sit beneath it. The active dot is a filled `--brass` disc; the rest are `--on-leaf-soft` rings at full strength. (Low-opacity dots would fall below 3:1; ring-versus-disc also means the active dot is never told apart by colour alone.)
 - **Video items** carry a small duration badge (`0:15`) on one corner in Public Sans. Nothing else distinguishes them — a video is a memory, not a media type.
+- **Shape:** the mount is a fixed 4:3 space, so spreads line up; the print inside keeps its own shape. A landscape photo spans the width, a portrait one stands upright at full height, and the corners hug the print. Nothing is cropped — a guest's face is never cut off to fit a frame.
+- **Viewfinder:** while the camera is on, the live picture appears in the mount where the next capture will land — the destination is shown, not described. The front camera is mirrored, as people expect; the photo taken is not.
+- **Landing:** after a capture, the new item shows in its mount for about two and a half seconds before the viewfinder returns, so the guest sees what they made.
+- **Open (public album):** tapping a print opens it full size in a viewer — a plain `--leaf-edge` ground, the photo or a playing video, and one "Close" button. Escape closes it.
 
 ### Writing page
 
@@ -156,8 +160,10 @@ Warm `--writing-paper`, `--radius-paper`, with a very faint baseline rule to sug
 Flush to the right edge, flat, `--leaf-raised`. It is a camera body, not a floating glass panel — no blur, no transparency, no rounded floating card.
 
 - Collapses to a thin strip with a single affordance to reopen.
-- Contains: the Photo/Video mode toggle, the shutter, and the destination indicator ("→ Spread 3").
-- **Shutter:** a circle, `--radius-pill`, `--photo-paper` fill. In video mode it grows a progress ring that depletes over 15 seconds. At 15 seconds the ring matters more than it would at 30 — people need to *feel* the clock, and a numeric countdown would make guests perform to it.
+- Contains: the Photo/Video mode toggle, the photo self-timer choice (3 s / 5 s), the shutter, and the destination indicator ("→ Spread 3").
+- **Photo self-timer (owner request):** a photo is always taken on a timer, 3 s by default or 5 s, so a guest can set the iPad down and pose. The seconds count down large on the viewfinder (Public Sans, tabular, on a `--leaf` plate) and on the shutter's ring; a second tap cancels. Unlike video, a visible number helps here: the guest needs to know when to smile.
+- **Shutter:** a circle, `--radius-pill`, `--photo-paper` fill. In video mode it grows a progress ring that depletes over 15 seconds. At 15 seconds the ring matters more than it would at 30 — people need to *feel* the clock, and a numeric countdown would make guests perform to it. While recording, the face becomes a rounded square (`--radius-button`) — the familiar "stop" — so the state is never carried by the ring alone. The ring is drawn from elapsed time, not a CSS animation: it is a clock, and the reduced-motion override must not freeze it.
+- **Status line:** short facts only — "3 waiting to save", "1.2 of 10 GB used" — in Public Sans, `--on-leaf-soft`. Longer warnings (storage piling up, camera blocked) appear as a notice above the album, where there is room to read them.
 
 ### Status
 
@@ -167,9 +173,11 @@ States appear on the mount itself, not as toasts:
 |---|---|
 | Saving… | `--on-leaf-soft`, Public Sans, no spinner |
 | Saved | Brief `--brass` confirmation on the corners, then it settles |
-| Not saved | `--warn` text and a tap target to retry — persistent, never auto-dismissed |
+| Not saved | A tap target to retry ("That photo didn't save. Tap to try again.") with a `--warn` edge — persistent, never auto-dismissed |
 
 A failed save must never be something the user can miss.
+
+**`--warn` marks, it does not write.** As small text on the leaf it is 4.3:1, short of AA, so every warning — not saved, sign-in error, notices — pairs a `--warn` edge bar with words in `--on-leaf`. Colour and text together; neither alone.
 
 ---
 

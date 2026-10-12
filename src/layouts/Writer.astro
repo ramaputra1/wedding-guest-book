@@ -21,6 +21,8 @@ const { deviceId } = Astro.props;
       mode="write"
       deviceId={deviceId}
       deviceLabel={site.devices[deviceId]}
+      facing={site.capture.facing}
+      photoTimers={site.capture.photoTimers}
       intro={site.intro}
       copy={site.album}
     />

@@ -3,7 +3,7 @@
  * cookie travels with every request on its own; page JavaScript never sees it.
  */
 import type { AlbumCopy } from '../config/site';
-import type { AlbumEntry, ApiEntries, ApiEntry, ApiError, ApiErrorCode, ApiSession, DeviceId } from './types';
+import type { AlbumEntry, ApiEntries, ApiEntry, ApiError, ApiErrorCode, ApiSession, ApiStats, DeviceId, MediaKind, VideoContainer } from './types';
 
 export class ApiFailure extends Error {
   constructor(
@@ -54,6 +54,51 @@ export function signOut(): Promise<unknown> {
   return call('/api/auth/logout', { method: 'POST' });
 }
 
+export function getStats(): Promise<ApiStats> {
+  return call<ApiStats>('/api/stats', { cache: 'no-store' });
+}
+
+/** Creates an entry; a repeat of the same id is a success, not a duplicate. */
+export function createEntry(id: string): Promise<ApiEntry> {
+  return call<ApiEntry>('/api/entries', postJson({ id }));
+}
+
+export type MediaPart = 'original' | 'thumb' | 'poster';
+
+export interface PartTarget {
+  mediaId: string;
+  entryId: string;
+  kind: MediaKind;
+  part: MediaPart;
+  container?: VideoContainer;
+}
+
+/** Streams one file of a media item to storage. Not saved until committed. */
+export function putMediaPart(target: PartTarget, file: Blob): Promise<unknown> {
+  const query = new URLSearchParams({ entryId: target.entryId, kind: target.kind });
+  if (target.container) query.set('container', target.container);
+  return call(`/api/media/${target.mediaId}/${target.part}?${query}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  });
+}
+
+export interface MediaCommit {
+  id: string;
+  entryId: string;
+  kind: MediaKind;
+  width: number;
+  height: number;
+  durationMs?: number;
+  container?: VideoContainer;
+}
+
+/** Writes the media row once every file is stored. Only its success means "Saved". */
+export function commitMedia(commit: MediaCommit): Promise<unknown> {
+  return call('/api/media', postJson(commit));
+}
+
 /** Converts the API's entries into what the album draws. */
 export function toAlbumEntry(entry: ApiEntry, copy: AlbumCopy): AlbumEntry {
   return {
@@ -63,8 +108,10 @@ export function toAlbumEntry(entry: ApiEntry, copy: AlbumCopy): AlbumEntry {
     media: entry.media.map((item) => ({
       id: item.id,
       kind: item.kind,
-      // The album shows thumbnails; full media is fetched on tap (Phase 4).
+      // The album shows thumbnails; the viewer fetches the full file on tap.
       src: item.thumbUrl,
+      fullSrc: item.url,
+      posterSrc: item.posterUrl ?? undefined,
       width: item.width ?? 4,
       height: item.height ?? 3,
       alt: entry.title ?? (item.kind === 'video' ? copy.videoAlt : copy.photoAlt),

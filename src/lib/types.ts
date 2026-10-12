@@ -8,6 +8,12 @@ export type DeviceId = 'ipad1' | 'ipad2';
 
 export type MediaKind = 'photo' | 'video';
 
+/** MP4 from the in-page recorder; QuickTime only from the native-camera fallback. */
+export type VideoContainer = 'mp4' | 'mov';
+
+/** Where an item stands between capture and storage. */
+export type SaveState = 'saving' | 'failed';
+
 /** One photo or video, as the album displays it. */
 export interface AlbumMedia {
   id: string;
@@ -20,6 +26,12 @@ export interface AlbumMedia {
   alt: string;
   /** Videos only. */
   durationMs?: number;
+  /** The full photo or video, fetched only when a visitor opens the item. */
+  fullSrc?: string;
+  /** Videos: the poster frame, shown before playback. */
+  posterSrc?: string;
+  /** Present only while the item is still on its way to storage (Phase 4 queue). */
+  pending?: { state: SaveState; code?: string; message?: string; permanent?: boolean };
 }
 
 /** A handwritten page, as the album displays it: the flattened image. */

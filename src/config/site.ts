@@ -30,8 +30,54 @@ export interface CameraCopy {
   photo: string;
   video: string;
   takePhoto: string;
+  /** "Take photo in" + "3 seconds" */
+  takePhotoIn: string;
+  cancelTimer: string;
+  /** Announced when the countdown starts: "Photo in" + "3 seconds". */
+  photoIn: string;
+  timer: string;
+  /** "3 s" on the timer choice. */
+  secondsShort: string;
+  seconds: string;
   startRecording: string;
+  stopRecording: string;
   destination: string;
+  /** "3 waiting to save" */
+  waiting: string;
+  /** "1.2 of 10 GB used" */
+  gaugeOf: string;
+  gaugeUnit: string;
+  storageWarning: string;
+  cameraRefused: string;
+  cameraUnavailable: string;
+}
+
+/** Words for a capture's journey to storage (DESIGN.md, Status). */
+export interface SaveCopy {
+  saving: string;
+  saved: string;
+  notSavedPhoto: string;
+  notSavedVideo: string;
+  signInAgain: string;
+  remove: string;
+  confirmRemove: string;
+}
+
+/** Words in the full-size viewer on the public album. */
+export interface ViewerCopy {
+  openPhoto: string;
+  playVideo: string;
+  close: string;
+}
+
+/** Which camera the iPads use. "user" faces the guests, as a guest book is filmed. */
+export interface CaptureConfig {
+  facing: 'user' | 'environment';
+  /**
+   * The self-timer choices for photos, in seconds; the first is the default.
+   * A photo is always taken on a timer, so guests have time to pose.
+   */
+  photoTimers: readonly [number, number];
 }
 
 /** Words on the writer's sign-in. DESIGN.md: "Enter the passphrase", not "Login to continue". */
@@ -66,6 +112,8 @@ export interface AlbumCopy {
   videoAlt: string;
   handwrittenPage: string;
   camera: CameraCopy;
+  save: SaveCopy;
+  viewer: ViewerCopy;
   signIn: SignInCopy;
 }
 
@@ -110,6 +158,8 @@ export interface SiteConfig {
 
   /** Labels for the two writer devices, used in their page titles. */
   devices: { ipad1: string; ipad2: string };
+
+  capture: CaptureConfig;
 }
 
 const names = ['Rama', 'Assela'] as const;
@@ -165,8 +215,35 @@ export const site = {
       photo: 'Photo',
       video: 'Video',
       takePhoto: 'Take photo',
+      takePhotoIn: 'Take photo in',
+      cancelTimer: 'Cancel timer',
+      photoIn: 'Photo in',
+      timer: 'Timer',
+      secondsShort: 's',
+      seconds: 'seconds',
       startRecording: 'Start recording',
+      stopRecording: 'Stop recording',
       destination: 'Saves to',
+      waiting: 'waiting to save',
+      gaugeOf: 'of',
+      gaugeUnit: 'GB used',
+      storageWarning: 'Uploads are piling up on this iPad. Check the wifi.',
+      cameraRefused: 'The camera is blocked. Allow it in Settings → Safari → Camera; until then the shutter opens the iPad camera.',
+      cameraUnavailable: 'The live camera is not available here; the shutter opens the iPad camera.',
+    },
+    save: {
+      saving: 'Saving…',
+      saved: 'Saved',
+      notSavedPhoto: "That photo didn't save. Tap to try again.",
+      notSavedVideo: "That video didn't save. Tap to try again.",
+      signInAgain: 'Sign in again to finish saving.',
+      remove: 'Remove',
+      confirmRemove: 'Remove this from the iPad? It was never saved and cannot be recovered.',
+    },
+    viewer: {
+      openPhoto: 'Open photo',
+      playVideo: 'Play video',
+      close: 'Close',
     },
     signIn: {
       label: 'Enter the passphrase',
@@ -179,4 +256,6 @@ export const site = {
   },
 
   devices: { ipad1: 'iPad 1', ipad2: 'iPad 2' },
+
+  capture: { facing: 'user', photoTimers: [3, 5] },
 } as const satisfies SiteConfig;

@@ -67,10 +67,15 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │   ├── Shutter.tsx
 │   │   ├── Canvas.tsx            # Phase 5
 │   │   ├── SignIn.tsx            # Phase 3
+│   │   ├── merge.ts              # saved album + queued captures → what the writer sees
+│   │   ├── hooks/
+│   │   │   ├── useCamera.ts      # the live stream: on only when needed
+│   │   │   └── useUploader.ts    # the queue, as Preact state
 │   │   └── album/                # the album's parts, shared by both modes
 │   │       ├── Album.tsx
 │   │       ├── Spread.tsx
-│   │       ├── MediaMount.tsx
+│   │       ├── MediaMount.tsx    # print shape, viewfinder, save status, carousel
+│   │       ├── MediaViewer.tsx   # full-size photo / video on the public album
 │   │       ├── PhotoCorners.tsx
 │   │       ├── WritingPage.tsx
 │   │       └── Gutter.tsx
@@ -85,7 +90,8 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │       │   ├── store.ts          # IndexedDB via idb
 │       │   └── uploader.ts       # retry, backoff, resume
 │       ├── capture/
-│       │   ├── photo.ts          # getUserMedia + resize + thumbnail
+│       │   ├── camera.ts         # getUserMedia, recorder type, permission
+│       │   ├── photo.ts          # frame / file → resized photo + thumbnail
 │       │   ├── video.ts          # MediaRecorder, 15s cap, poster frame
 │       │   └── fallback.ts       # <input capture> path
 │       └── canvas/
@@ -120,6 +126,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   ├── ids.ts                    # {device}-{ULID} validation, ULID time
 │   ├── files.ts                  # R2 keys, size ceilings, file signatures
 │   ├── upload.ts                 # stream to R2, then verify the bytes
+│   ├── mp4.ts                    # a video's duration from its own header
 │   └── db.ts                     # D1 queries — INSERT only
 │
 ├── migrations/
@@ -137,8 +144,12 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   ├── concurrency.spec.ts       # two devices writing simultaneously
 │   ├── uploads.spec.ts           # server-side upload validation
 │   ├── session.spec.ts           # session + passphrase unit tests
-│   ├── upload-failure.spec.ts    # network death mid-upload
-│   └── e2e/                      # Playwright journeys
+│   ├── uploader.spec.ts          # queue rules: backoff, retry, resume
+│   ├── mp4.spec.ts               # reading a video's duration from the file
+│   ├── fixtures/                 # a 3-second recording from Chrome's fake camera
+│   └── e2e/                      # Playwright, in the installed Chrome with a fake camera
+│       ├── capture.spec.ts       # capture → saved → right spread; 15 s stop; playback
+│       └── upload-failure.spec.ts # network death mid-upload, offline, browser closed
 │
 └── .github/
     └── workflows/

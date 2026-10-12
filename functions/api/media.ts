@@ -7,7 +7,8 @@
 import type { MediaKind } from '../../src/lib/types';
 import { entryExists, findMedia, insertMedia } from '../../lib-server/db';
 import { limits, type Env, type RequestData } from '../../lib-server/env';
-import { mediaKey } from '../../lib-server/files';
+import { isVideoContainer, mediaKey, type VideoContainer } from '../../lib-server/files';
+import { videoDurationMs } from '../../lib-server/mp4';
 import { requireSession } from '../../lib-server/guard';
 import { error, errors, json, readJsonObject } from '../../lib-server/http';
 import { idTime, parseId } from '../../lib-server/ids';
@@ -40,16 +41,20 @@ export const onRequestPost: PagesFunction<Env, string, RequestData> = async (con
   const height = dimension(body.height);
   if (width === null || height === null) return errors.badRequest('Width and height must be whole numbers of pixels.');
 
+  const maxDurationMs = limits(env).maxVideoDurationMs;
+  const tooLong = () =>
+    error(413, 'payload_too_large', `Videos stop at ${maxDurationMs / 1000} seconds. This one is longer and was not saved.`);
   let durationMs: number | null = null;
+  let container: VideoContainer = 'mp4';
   if (kind === 'video') {
-    const max = limits(env).maxVideoDurationMs;
     if (!Number.isInteger(body.durationMs) || (body.durationMs as number) <= 0) {
       return errors.badRequest('A video needs its duration in milliseconds.');
     }
     durationMs = body.durationMs as number;
-    if (durationMs > max + DURATION_TOLERANCE_MS) {
-      return error(413, 'payload_too_large', `Videos stop at ${max / 1000} seconds. This one is longer and was not saved.`);
-    }
+    if (durationMs > maxDurationMs + DURATION_TOLERANCE_MS) return tooLong();
+    const containerParam = body.container ?? 'mp4';
+    if (!isVideoContainer(containerParam)) return errors.badRequest('A video container must be mp4 or mov.');
+    container = containerParam;
   }
   const createdAt = idTime(media.ulid);
   if (createdAt === null) return errors.badRequest("The media id's time is not plausible. Check the iPad's date and time.");
@@ -69,7 +74,7 @@ export const onRequestPost: PagesFunction<Env, string, RequestData> = async (con
   }
 
   const keys = {
-    original: mediaKey(kind as MediaKind, 'original', entryId, id),
+    original: mediaKey(kind as MediaKind, 'original', entryId, id, container),
     thumb: mediaKey(kind as MediaKind, 'thumb', entryId, id),
     poster: kind === 'video' ? mediaKey('video', 'poster', entryId, id) : null,
   };
@@ -77,6 +82,19 @@ export const onRequestPost: PagesFunction<Env, string, RequestData> = async (con
   const [original, thumb, poster] = heads;
   if (!original || !thumb || (keys.poster && !poster)) {
     return error(409, 'upload_incomplete', "Some of this item's files haven't arrived. Upload them, then save again.");
+  }
+
+  // The file's own duration overrules the claim whenever the file states one.
+  if (kind === 'video') {
+    const readRange = async (offset: number, length: number) => {
+      const part = await env.MEDIA.get(keys.original, { range: { offset, length } });
+      return part ? new Uint8Array(await part.arrayBuffer()) : new Uint8Array();
+    };
+    const fromFile = await videoDurationMs(readRange, original.size);
+    if (fromFile !== null) {
+      if (fromFile > maxDurationMs + DURATION_TOLERANCE_MS) return tooLong();
+      durationMs = fromFile;
+    }
   }
 
   const created = await insertMedia(env.DB, {
