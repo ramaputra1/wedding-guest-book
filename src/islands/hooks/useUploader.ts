@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { commitMedia, createEntry, putMediaPart } from '../../lib/api';
+import { commitCanvas, commitMedia, createEntry, putCanvasPng, putMediaPart } from '../../lib/api';
 import { indexedDbQueue, requestPersistentStorage, type QueueItem } from '../../lib/queue/store';
 import { Uploader } from '../../lib/queue/uploader';
 
@@ -21,7 +21,7 @@ export function useUploader({ enabled, onSaved, onUnauthorized }: Options) {
   useEffect(() => {
     const instance = new Uploader({
       store: indexedDbQueue,
-      api: { createEntry, putMediaPart, commitMedia },
+      api: { createEntry, putMediaPart, commitMedia, putCanvasPng, commitCanvas },
       onChange: setItems,
       onSaved: (item) => callbacks.current.onSaved(item),
       onUnauthorized: () => callbacks.current.onUnauthorized(),

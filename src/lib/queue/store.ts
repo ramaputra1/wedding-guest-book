@@ -8,6 +8,9 @@ import { openDB, type IDBPDatabase } from 'idb';
 import type { MediaPart } from '../api';
 import type { MediaKind, SaveState, VideoContainer } from '../types';
 
+/** A photo or video — or a version of a handwritten page. */
+export type QueueKind = MediaKind | 'canvas';
+
 export interface QueueError {
   code: string;
   message: string;
@@ -20,14 +23,20 @@ export interface QueueItem {
   entryId: string;
   /** The capture started a new spread: create the entry before the media. */
   createEntry: boolean;
-  kind: MediaKind;
+  /**
+   * For a page, `mediaId` is the canvas version's id, `original` its PNG,
+   * and `strokes` its stroke JSON; there is no thumbnail or poster.
+   */
+  kind: QueueKind;
   container?: VideoContainer;
   width: number;
   height: number;
   durationMs?: number;
   original: Blob;
-  thumb: Blob;
+  thumb?: Blob;
   poster?: Blob;
+  /** Pages only: the stroke JSON, as text. */
+  strokes?: string;
   /** Epoch ms. */
   createdAt: number;
   /** Parts already stored, so a retry re-sends only what is missing. */

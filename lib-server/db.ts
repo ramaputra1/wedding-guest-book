@@ -170,6 +170,17 @@ export async function insertCanvas(
   return result.meta.changes === 1;
 }
 
+/** The newest version of an entry's page, with its strokes. */
+export async function latestCanvas(
+  db: D1Database,
+  entryId: string,
+): Promise<{ id: string; version: number; stroke_data: string; created_at: number } | null> {
+  return db
+    .prepare('SELECT id, version, stroke_data, created_at FROM canvases WHERE entry_id = ? ORDER BY version DESC LIMIT 1')
+    .bind(entryId)
+    .first();
+}
+
 export async function counts(db: D1Database): Promise<{ entries: number; media: number; canvases: number; mediaBytes: number }> {
   const row = await db
     .prepare(

@@ -65,7 +65,6 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │   ├── GuestBook.tsx         # root: album read-only on /, + writer controls on /ipadN
 │   │   ├── CameraRail.tsx
 │   │   ├── Shutter.tsx
-│   │   ├── Canvas.tsx            # Phase 5
 │   │   ├── SignIn.tsx            # Phase 3
 │   │   ├── merge.ts              # saved album + queued captures → what the writer sees
 │   │   ├── hooks/
@@ -77,7 +76,8 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │       ├── MediaMount.tsx    # print shape, viewfinder, save status, carousel
 │   │       ├── MediaViewer.tsx   # full-size photo / video on the public album
 │   │       ├── PhotoCorners.tsx
-│   │       ├── WritingPage.tsx
+│   │       ├── WritingPage.tsx   # a page as the album shows it (saved PNG)
+│   │       ├── WritingCanvas.tsx # the writer's page: canvas, tools, save
 │   │       └── Gutter.tsx
 │   │
 │   └── lib/
@@ -97,6 +97,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │       └── canvas/
 │           ├── strokes.ts        # perfect-freehand integration
 │           ├── pointer.ts        # coalesced events, palm rejection, pressure
+│           ├── drafts.ts         # the page in progress, in localStorage
 │           └── export.ts         # 2x DPR PNG + stroke JSON
 │
 ├── functions/                    # Cloudflare Pages Functions
@@ -111,7 +112,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │       ├── entries.ts
 │       ├── media.ts              # commit
 │       ├── media/[id]/[part].ts  # stream one file to R2
-│       ├── canvas.ts             # commit
+│       ├── canvas.ts             # commit; latest strokes
 │       ├── canvas/[id].ts        # stream the PNG to R2
 │       ├── files/[[key]].ts      # public file serving, byte ranges
 │       └── stats.ts

@@ -6,12 +6,15 @@
  * still retried — when the connection returns, every minute, and on tap.
  */
 import { ApiFailure, type MediaCommit, type MediaPart, type PartTarget } from '../api';
+import type { MediaKind } from '../types';
 import type { QueueError, QueueItem, QueueStore } from './store';
 
 export interface UploadApi {
   createEntry(id: string): Promise<unknown>;
   putMediaPart(target: PartTarget, file: Blob): Promise<unknown>;
   commitMedia(commit: MediaCommit): Promise<unknown>;
+  putCanvasPng(canvasId: string, entryId: string, png: Blob): Promise<unknown>;
+  commitCanvas(id: string, entryId: string, strokes: string): Promise<unknown>;
 }
 
 export interface UploaderOptions {
@@ -38,6 +41,7 @@ export function backoffMs(attempt: number): number {
 }
 
 export function requiredParts(item: Pick<QueueItem, 'kind'>): MediaPart[] {
+  if (item.kind === 'canvas') return ['original'];
   return item.kind === 'video' ? ['original', 'thumb', 'poster'] : ['original', 'thumb'];
 }
 
@@ -164,6 +168,7 @@ export class Uploader {
   }
 
   private async upload(item: QueueItem) {
+    if (item.kind === 'canvas') return this.uploadPage(item);
     const { api } = this.options;
     let current = { ...item, stored: [...item.stored] };
     try {
@@ -174,7 +179,7 @@ export class Uploader {
         if (!file) throw new ApiFailure(400, 'bad_request', `The ${part} file is missing from this capture.`);
         try {
           await api.putMediaPart(
-            { mediaId: current.mediaId, entryId: current.entryId, kind: current.kind, part, container: current.container },
+            { mediaId: current.mediaId, entryId: current.entryId, kind: current.kind as MediaKind, part, container: current.container },
             file,
           );
         } catch (failure) {
@@ -188,13 +193,39 @@ export class Uploader {
       await api.commitMedia({
         id: current.mediaId,
         entryId: current.entryId,
-        kind: current.kind,
+        kind: current.kind as MediaKind,
         width: current.width,
         height: current.height,
         durationMs: current.durationMs,
         container: current.container,
       });
       // Confirmed on the server: only now does the local copy go.
+      await this.options.store.remove(current.mediaId);
+      this.items.delete(current.mediaId);
+      this.emit();
+      this.options.onSaved(current);
+    } catch (failure) {
+      await this.fail(current, classify(failure));
+    }
+  }
+
+  /** A page version: create the entry if new → store the PNG → commit the strokes. */
+  private async uploadPage(item: QueueItem) {
+    const { api } = this.options;
+    let current = { ...item, stored: [...item.stored] };
+    try {
+      if (current.createEntry) await api.createEntry(current.entryId);
+      if (!current.stored.includes('original')) {
+        try {
+          await api.putCanvasPng(current.mediaId, current.entryId, current.original);
+        } catch (failure) {
+          if (!(failure instanceof ApiFailure && failure.code === 'already_saved')) throw failure;
+        }
+        current = { ...current, stored: ['original'] };
+        this.items.set(current.mediaId, current);
+        await this.options.store.put(current);
+      }
+      await api.commitCanvas(current.mediaId, current.entryId, current.strokes ?? '{}');
       await this.options.store.remove(current.mediaId);
       this.items.delete(current.mediaId);
       this.emit();

@@ -1,7 +1,7 @@
 import type { AlbumCopy } from '../../config/site';
 import type { AlbumEntry, AlbumMedia, AlbumMode } from '../../lib/types';
 import type { LivePreview } from './MediaMount';
-import { Spread } from './Spread';
+import { Spread, type PageEditor } from './Spread';
 
 /** The writer's always-present blank spread at the end of the book. */
 export const NEW_SPREAD_ID = 'new-spread';
@@ -16,6 +16,8 @@ interface Props {
   onSelect: (id: string) => void;
   /** The live camera, and the spread it is shown in. */
   live?: { spreadId: string; preview: LivePreview };
+  /** The writer's destination page, and how it saves. */
+  editor?: { spreadId: string } & PageEditor;
   /** Entries whose capture was just confirmed saved. */
   justSaved?: ReadonlySet<string>;
   onOpen?: (item: AlbumMedia) => void;
@@ -24,7 +26,7 @@ interface Props {
   copy: AlbumCopy;
 }
 
-export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const shared = { mode, onOpen, onRetry, onDiscard, copy };
   const loaded = entries ?? [];
   const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
@@ -60,6 +62,7 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               selected={selectedId === entry.id}
               onSelect={() => onSelect(entry.id)}
               live={live?.spreadId === entry.id ? live.preview : undefined}
+              editor={editor?.spreadId === entry.id ? editor : undefined}
               justSaved={justSaved?.has(entry.id)}
               {...shared}
             />
@@ -73,6 +76,7 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               selected={selectedId === NEW_SPREAD_ID}
               onSelect={() => onSelect(NEW_SPREAD_ID)}
               live={live?.spreadId === NEW_SPREAD_ID ? live.preview : undefined}
+              editor={editor?.spreadId === NEW_SPREAD_ID ? editor : undefined}
               {...shared}
             />
           )}

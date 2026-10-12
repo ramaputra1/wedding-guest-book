@@ -13,7 +13,9 @@
   --writing-paper: #EFE8DA;  /* handwriting pages — warm, as writing paper is */
 
   --ink:           #1A2238;  /* handwriting + text on paper — fountain-pen blue-black */
-  --ink-soft:      #4A5268;  /* secondary text on paper */
+  --ink-soft:      #4A5268;  /* secondary text on paper; also the pencil's graphite */
+  --ink-sepia:     #5B3A1E;  /* second ink: iron-gall brown */
+  --ink-oxblood:   #6E1E2A;  /* third ink: deep red */
 
   --brass:         #A08A52;  /* STATE ONLY — selected, active, confirmed */
   --brass-dim:     #6B5C38;  /* brass at rest, e.g. an inactive corner hint */

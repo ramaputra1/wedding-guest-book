@@ -154,6 +154,7 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 | `POST` | `/api/media` | **session** | Commit a media item whose files are stored: writes its D1 row |
 | `PUT` | `/api/canvas/{id}` | **session** | Stream a canvas version's PNG into R2 |
 | `POST` | `/api/canvas` | **session** | Commit a canvas version: stroke JSON to D1, version number assigned |
+| `GET` | `/api/canvas?entryId=` | **session** | The latest version's stroke JSON, so a writer can carry on writing on that page |
 | `GET` | `/api/stats` | **session** | Storage used, entry count — feeds the writer's gauge |
 | `GET` | `/api/files/{r2 key}` | — | Serve a stored photo, video, poster, thumbnail or page; byte ranges for video |
 
@@ -228,6 +229,17 @@ Implementation points that decide whether it feels like paper:
 - **Stroke-level undo**, not pixel snapshots — cheaper, and it survives a resize.
 
 Tools: pen, pencil, eraser, three inks, undo, clear, save.
+
+**How it is built** (`src/lib/canvas/`, `src/islands/album/WritingCanvas.tsx`):
+
+- Strokes are stored in **page units** — a fixed 1000 × 750 space, the page's 4:3 — never screen pixels. Rotation, resize and a different iPad all redraw the same page.
+- The stroke JSON (`canvases.stroke_data`) is a self-describing document: `{ format: "guestbook-strokes", version: 1, width: 1000, height: 750, strokes }`. Each stroke carries its tool, ink token, the colour that token had, its points as `[x, y, pressure]`, whether the pressure was real, and the `perfect-freehand` options used — so it can be redrawn without this code. The server refuses anything not in that shape.
+- Two stacked canvases: finished strokes below, the stroke being written above, redrawn once per frame. Both are backed at `max(2, devicePixelRatio)` × their CSS size. The eraser removes ink (`destination-out`), never paper: the paper and ruling are not in the canvas.
+- The saved PNG is 2000 × 1500 with a **transparent** background — ink only; the album supplies the paper.
+- **Save** goes through the same IndexedDB queue as a photo: create the entry if new → PUT the PNG → POST the strokes. Every save is a new version of the **whole page**, never a delta.
+- **Drafts.** The page in progress is kept in `localStorage` (`guestbook-page:{entryId}`) after every stroke, so a reload or a crash costs nothing. After Save it is kept, marked saved, until the server confirms that version; then it is removed. `localStorage` rather than IndexedDB because it is synchronous — the stroke is written before the next event can be lost — and a page's strokes are small.
+- **Carrying on.** Selecting a spread whose page already has a saved version fetches that version's strokes and continues from them. Unsaved strokes on this iPad always win; otherwise the newer of this iPad's own last save and the server's latest. If the strokes cannot be fetched and this iPad has no copy, the page is not writable until they can be — a new version without them would hide the saved writing from the album.
+- While a pointer is down, the live camera preview beside the page pauses (CLAUDE.md: nothing animates near the canvas while drawing).
 
 `signature_pad` (MIT) is the documented swap-in fallback if the Pencil feel disappoints on real hardware.
 

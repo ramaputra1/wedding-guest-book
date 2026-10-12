@@ -21,7 +21,7 @@ class MemoryStore implements QueueStore {
   }
 }
 
-type Call = { op: 'entry' | 'put' | 'commit'; detail: string };
+type Call = { op: 'entry' | 'put' | 'commit' | 'png' | 'page'; detail: string };
 
 function fakeApi(failures: Partial<Record<string, () => never>> = {}) {
   const calls: Call[] = [];
@@ -37,6 +37,14 @@ function fakeApi(failures: Partial<Record<string, () => never>> = {}) {
     async commitMedia(commit: MediaCommit) {
       calls.push({ op: 'commit', detail: commit.id });
       failures.commit?.();
+    },
+    async putCanvasPng(canvasId: string) {
+      calls.push({ op: 'png', detail: canvasId });
+      failures.png?.();
+    },
+    async commitCanvas(id: string, _entryId: string, strokes: string) {
+      calls.push({ op: 'page', detail: `${id} ${strokes}` });
+      failures.page?.();
     },
   };
   return { api, calls };
@@ -106,6 +114,41 @@ describe('a capture is saved only when the server confirms it', () => {
     await uploader.enqueue(item({ kind: 'video', poster: new Blob(['poster']), durationMs: 9_000, container: 'mp4', createEntry: false }));
     await vi.runAllTimersAsync();
     expect(calls.filter((c) => c.op === 'put').map((c) => c.detail)).toEqual(['original', 'thumb', 'poster']);
+  });
+});
+
+describe('a handwritten page goes through the same queue', () => {
+  const page = (overrides: Partial<QueueItem> = {}) =>
+    item({ kind: 'canvas', thumb: undefined, original: new Blob(['png']), strokes: '{"format":"guestbook-strokes"}', width: 2000, height: 1500, ...overrides });
+
+  it('stores the PNG, then commits the strokes as a new version, then releases the local copy', async () => {
+    const { api, calls } = fakeApi();
+    const { uploader, store, saved } = setup(api);
+    await uploader.start();
+    await uploader.enqueue(page());
+    await vi.runAllTimersAsync();
+    expect(calls.map((c) => `${c.op}:${c.detail}`)).toEqual([
+      'entry:ipad1-01KCZ5X0Q8V2M7H4R9T3B6N1JE',
+      'png:ipad1-01KCZ5X0Q8V2M7H4R9T3B6N1JD',
+      'page:ipad1-01KCZ5X0Q8V2M7H4R9T3B6N1JD {"format":"guestbook-strokes"}',
+    ]);
+    expect(store.rows.size).toBe(0);
+    expect(saved).toHaveLength(1);
+  });
+
+  it('offline: the page stays queued with its PNG remembered, and only the commit is retried', async () => {
+    let offline = true;
+    const { api, calls } = fakeApi({ page: () => (offline ? network() : (undefined as never)) });
+    const { uploader, store, saved } = setup(api);
+    await uploader.start();
+    await uploader.enqueue(page({ createEntry: false }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saved).toHaveLength(0);
+    expect([...store.rows.values()][0].stored).toEqual(['original']);
+    offline = false;
+    await vi.runAllTimersAsync();
+    expect(saved).toHaveLength(1);
+    expect(calls.filter((c) => c.op === 'png')).toHaveLength(1);
   });
 });
 

@@ -99,8 +99,19 @@ export async function uploadCanvasPng(cookie: Cookie, device: DeviceId, entryId:
   return canvasId;
 }
 
-export function commitCanvas(cookie: Cookie, canvasId: string, entryId: string): Promise<Response> {
-  return call('/api/canvas', { method: 'POST', cookie, json: { id: canvasId, entryId, strokes: [{ points: [[1, 2, 0.5], [3, 4, 0.6]] }] } });
+/** A small page in the format the album writes (src/lib/canvas/strokes.ts). */
+export function strokeDocument(points: [number, number, number][] = [[1, 2, 0.5], [3, 4, 0.6]]) {
+  return {
+    format: 'guestbook-strokes',
+    version: 1,
+    width: 1000,
+    height: 750,
+    strokes: [{ tool: 'pen', ink: 'ink', color: '#1A2238', points, pressure: true, options: { size: 6 } }],
+  };
+}
+
+export function commitCanvas(cookie: Cookie, canvasId: string, entryId: string, strokes: unknown = strokeDocument()): Promise<Response> {
+  return call('/api/canvas', { method: 'POST', cookie, json: { id: canvasId, entryId, strokes } });
 }
 
 /** The album as a signed-in iPad sees it: fresh, never the public cache. */

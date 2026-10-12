@@ -73,6 +73,7 @@ const PROTECTED: Array<[string, () => Promise<[string, Call]>]> = [
     return [`/api/canvas/${id}?entryId=${entryId}`, { method: 'PUT', body: await png(), contentType: 'image/png' }];
   }],
   ['POST /api/canvas', async () => ['/api/canvas', { method: 'POST', json: { id: newId('ipad1'), entryId, strokes: [] } }]],
+  ['GET /api/canvas', async () => [`/api/canvas?entryId=${entryId}`, {}]],
   ['GET /api/stats', async () => ['/api/stats', {}]],
   ['GET /api/auth/session', async () => ['/api/auth/session', {}]],
   ['POST /api/auth/logout', async () => ['/api/auth/logout', { method: 'POST' }]],

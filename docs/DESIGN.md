@@ -29,7 +29,9 @@ Everything below exists to make a screen feel like an object you could hold.
   --writing-paper: #EFE8DA;  /* handwriting pages — warm, as writing paper is */
 
   --ink:           #1A2238;  /* handwriting + text on paper — fountain-pen blue-black */
-  --ink-soft:      #4A5268;  /* secondary text on paper */
+  --ink-soft:      #4A5268;  /* secondary text on paper; also the pencil's graphite */
+  --ink-sepia:     #5B3A1E;  /* second ink: iron-gall brown */
+  --ink-oxblood:   #6E1E2A;  /* third ink: deep red */
 
   --brass:         #A08A52;  /* STATE ONLY — selected, active, confirmed */
   --brass-dim:     #6B5C38;  /* brass at rest, e.g. an inactive corner hint */
@@ -154,6 +156,13 @@ A photo or video mounted on the album leaf, with **real photo corners** — smal
 ### Writing page
 
 Warm `--writing-paper`, `--radius-paper`, with a very faint baseline rule to suggest ruled paper. Ink defaults to `--ink`. The surface must read as paper before it reads as a canvas — no toolbar chrome crowding its edges, no visible border box.
+
+**Writing on it (writer iPads).** The page of the destination spread — the same spread the camera is aimed at — takes the pen. Its tools sit in one quiet row *below* the paper, never on it: Pen · Pencil · Eraser, three inks, Undo, Clear, Save.
+
+- **Inks:** `--ink` (blue-black), `--ink-sepia`, `--ink-oxblood` — all dark enough to read on `--writing-paper` at any thickness. The chosen one carries a brass ring (shape, not colour alone).
+- **Pencil** is graphite (`--ink-soft`), thinner and a little translucent. **Eraser** removes ink, never paper.
+- **Save** → "Saved": a new version every time; nothing earlier is ever replaced. **Clear** asks first, and only clears what is on screen — every saved version stays in the album's history.
+- Nothing animates near the page while the pen is down: the live camera preview beside it pauses until the pen lifts.
 
 ### Camera rail
 

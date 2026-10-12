@@ -99,6 +99,37 @@ export function commitMedia(commit: MediaCommit): Promise<unknown> {
   return call('/api/media', postJson(commit));
 }
 
+/** Streams a page version's PNG to storage. Not saved until committed. */
+export function putCanvasPng(canvasId: string, entryId: string, png: Blob): Promise<unknown> {
+  return call(`/api/canvas/${canvasId}?${new URLSearchParams({ entryId })}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png' },
+    body: png,
+  });
+}
+
+/**
+ * Saves a new version of a page. `strokes` is the stroke JSON as text, sent
+ * as-is so a large page is never parsed and re-serialised on the iPad.
+ */
+export function commitCanvas(id: string, entryId: string, strokes: string): Promise<{ version: number }> {
+  return call('/api/canvas', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: `{"id":${JSON.stringify(id)},"entryId":${JSON.stringify(entryId)},"strokes":${strokes}}`,
+  });
+}
+
+/** The latest saved version of a page, to keep writing on it. Null when it has none. */
+export async function getLatestStrokes(entryId: string): Promise<{ version: number; createdAt: number; strokes: unknown } | null> {
+  try {
+    return await call(`/api/canvas?${new URLSearchParams({ entryId })}`, { cache: 'no-store' });
+  } catch (failure) {
+    if (failure instanceof ApiFailure && failure.status === 404) return null;
+    throw failure;
+  }
+}
+
 /** Converts the API's entries into what the album draws. */
 export function toAlbumEntry(entry: ApiEntry, copy: AlbumCopy): AlbumEntry {
   return {

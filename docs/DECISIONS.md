@@ -202,6 +202,16 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D19 — A page version is the whole page, continued from the latest
+
+**Chosen:** every Save stores the complete page — all its strokes and a full PNG — as a new version. Writing on a page that already has a version starts from that version's strokes (fetched with `GET /api/canvas`).
+
+**Why:** a whole-page version can be shown, archived and restored on its own, decades later, without replaying a chain of deltas. Starting from the latest version means a guest adds to the page instead of replacing it in the album's view.
+
+**Trade-off:** if both iPads write on the *same* page at the same time, the later save is what the album shows; the other's writing is not merged into it. Nothing is lost — both versions are rows in D1 and files in R2, and the archive keeps every one. On the day each iPad usually writes on its own spreads, so this should be rare; merging strokes from two versions would be possible later, because both are vector data.
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.
