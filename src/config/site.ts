@@ -21,6 +21,38 @@ export type HeroFocus = 'center' | 'left' | 'right';
  */
 export type HeroTextPlacement = 'lower' | 'center';
 
+/** Words on the camera rail. Sentence case, active voice (DESIGN.md, Words). */
+export interface CameraCopy {
+  label: string;
+  show: string;
+  hide: string;
+  mode: string;
+  photo: string;
+  video: string;
+  takePhoto: string;
+  startRecording: string;
+  destination: string;
+}
+
+/**
+ * Words the album uses, mostly for assistive technology. Labels are joined
+ * into phrases like "Spread 3, 2 items" and "Show item 2 of 3".
+ */
+export interface AlbumCopy {
+  emptyAlbum: string;
+  spread: string;
+  newSpread: string;
+  emptyMount: string;
+  item: string;
+  items: string;
+  showItem: string;
+  of: string;
+  video: string;
+  seconds: string;
+  blankPage: string;
+  camera: CameraCopy;
+}
+
 export interface SiteConfig {
   /** BCP 47 language tag for `<html lang>`. */
   lang: string;
@@ -57,6 +89,11 @@ export interface SiteConfig {
 
   /** The guest book's single line of introduction. DESIGN.md allows one, never two. */
   intro: string;
+
+  album: AlbumCopy;
+
+  /** Labels for the two writer devices, used in their page titles. */
+  devices: { ipad1: string; ipad2: string };
 }
 
 const names = ['Rama', 'Assela'] as const;
@@ -86,4 +123,31 @@ export const site = {
   },
 
   intro: 'Every page here was written by hand on the day.',
+
+  album: {
+    emptyAlbum: 'Nothing here yet.',
+    spread: 'Spread',
+    newSpread: 'New spread',
+    emptyMount: 'empty',
+    item: 'item',
+    items: 'items',
+    showItem: 'Show item',
+    of: 'of',
+    video: 'Video',
+    seconds: 'seconds',
+    blankPage: 'Blank page',
+    camera: {
+      label: 'Camera',
+      show: 'Show camera',
+      hide: 'Hide camera',
+      mode: 'Capture mode',
+      photo: 'Photo',
+      video: 'Video',
+      takePhoto: 'Take photo',
+      startRecording: 'Start recording',
+      destination: 'Saves to',
+    },
+  },
+
+  devices: { ipad1: 'iPad 1', ipad2: 'iPad 2' },
 } as const satisfies SiteConfig;

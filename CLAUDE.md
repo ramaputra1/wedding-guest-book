@@ -121,7 +121,7 @@ Accessibility floor, non-negotiable: visible keyboard focus on every interactive
 ## Code conventions
 
 - TypeScript everywhere. `strict: true`. No `any` without a comment explaining why.
-- Astro components for anything static. The Preact island is only for the album's interactive surface — do not hydrate the landing page.
+- Astro components for anything static. The one Preact island renders the album: read-only on `/`, hydrated only when scrolled into view (`client:visible`); with writer controls on `/ipad1` and `/ipad2`. The cover stays static — never hydrate it.
 - CSS lives in `src/styles/`, organised as tokens → base → components. Use custom properties, logical properties (`padding-inline`), and `clamp()` for fluid type.
 - Keep functions small and named for what they do. Prefer clarity over brevity.
 - Comment **why**, not what. A comment explaining a Safari workaround is valuable; a comment restating the line above is noise.

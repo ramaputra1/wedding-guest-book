@@ -94,7 +94,9 @@ The owner asked whether photos and videos could be saved directly on the iPad in
 
 ## D8 — Framework: Astro + one Preact island
 
-**Chosen:** Astro + TypeScript. The landing page ships as static HTML with no JavaScript; only the writer surface hydrates. Output is portable static files, which serves the decades-long requirement.
+**Chosen:** Astro + TypeScript. The cover ships as static HTML with no island JavaScript. Output is portable static files, which serves the decades-long requirement.
+
+**The one island renders the album in two modes** (revised in Phase 2). Album entries arrive at runtime from `/api/entries`; a static site cannot render them at build time, so the album is a Preact island. On `/` it hydrates read-only and only when the album scrolls into view (`client:visible`) — the cover loads with zero island JavaScript, about 12 KB gzipped arrives on scroll. On `/ipad1` and `/ipad2` the same island adds selection and the camera rail. One markup, two modes; the alternative — Astro templates filled by hand-written JavaScript on `/` beside a separate Preact writer — was rejected as two renderers of the same markup to keep in sync forever.
 
 **Preact over React** for the island — same API, a fraction of the bytes, and only one island exists.
 
@@ -146,7 +148,7 @@ Full system in `docs/DESIGN.md`.
 
 **Rejected — `@astrojs/cloudflare`.** Tested in Phase 0, not assumed. v13+ targets Cloudflare *Workers* only; against a Pages `wrangler.toml` its build fails (`The name 'ASSETS' is reserved in Pages projects`) and it enables KV-session and Images bindings by default. v12 supports Pages but emits `dist/_worker.js`, which switches Pages into "advanced mode" and **silently ignores the `functions/` directory** — the whole API.
 
-**What it costs:** nothing the plan uses. All server logic was already in `functions/` and `lib-server/`. `/ipad1` and `/ipad2` are static pages with the device id fixed at build time, which is correct — the route is identity, not authorization.
+**What it costs:** server-side rendering of pages. With an adapter, `/` could have been rendered per request with entries already in the HTML; without one, the album is rendered in the browser by the island (D8). *(Corrected in Phase 2 — Phase 0 first said this cost "nothing the plan uses", which missed it.)* All server logic was already in `functions/` and `lib-server/`. `/ipad1` and `/ipad2` are static pages with the device id fixed at build time, which is correct — the route is identity, not authorization.
 
 **Do not "fix" this by adding the adapter back.** If server-rendered Astro pages are ever needed, raise it with the owner first.
 

@@ -38,6 +38,8 @@ Everything below exists to make a screen feel like an object you could hold.
   --on-leaf-soft:  #8A8E98;  /* secondary text on the leaf */
 
   --warn:          #B4654A;  /* unsaved / retry states — used sparingly */
+
+  --writing-rule:  rgba(26, 34, 56, 0.08);  /* faint ruled lines on writing paper — --ink at 8% */
 }
 ```
 
@@ -112,6 +114,10 @@ Public Sans stays small and quiet. It never competes, and it never appears in ed
   --radius-paper:  3px;
   --radius-button: 4px;
   --radius-pill:   999px;   /* the shutter, and only the shutter */
+
+  --rule-width:  1px;      /* hairlines: the selection rule, seams, dot rings */
+  --focus-width: 2px;      /* the brass keyboard focus ring */
+  --album-max:   80rem;    /* the book never grows wider than this on large screens */
 }
 ```
 
@@ -136,8 +142,9 @@ A photo or video mounted on the album leaf, with **real photo corners** — smal
 
 - **Empty mount:** four bare corners on the leaf, nothing else. This is a visible invitation and needs no "Add a photo" instruction text.
 - **Filled mount:** the media sits under the corners, which overlap its edges as gummed corners would.
+- **At rest:** corners are `--on-leaf-soft`. (`--brass-dim` was the first idea, but at 2.8:1 on the leaf it fails WCAG's 3:1 minimum for UI graphics; `--on-leaf-soft` is 5.6:1.)
 - **Selected:** the four corners turn `--brass` and a hairline brass rule appears beneath the mount. No glow, no outline, no scale transform.
-- **Carousel:** when a mount holds several items, dots sit beneath it. The active dot is `--brass`; the rest are `--on-leaf-soft` at low opacity.
+- **Carousel:** when a mount holds several items, dots sit beneath it. The active dot is a filled `--brass` disc; the rest are `--on-leaf-soft` rings at full strength. (Low-opacity dots would fall below 3:1; ring-versus-disc also means the active dot is never told apart by colour alone.)
 - **Video items** carry a small duration badge (`0:15`) on one corner in Public Sans. Nothing else distinguishes them — a video is a memory, not a media type.
 
 ### Writing page
@@ -201,6 +208,8 @@ The **gutter** is a genuine vertical seam with an inner shadow toward `--leaf-ed
 
 Design iPad-first. The owner uses this on an iPad; everyone else is a visitor.
 
+**The one breakpoint:** the spread opens side by side when `(orientation: landscape) and (min-width: 48rem)`; otherwise it folds. Orientation, not width alone, because a tall iPad and a phone fold the same way, and a wide-but-short phone in landscape still opens like a book.
+
 ---
 
 ## Motion
@@ -231,6 +240,7 @@ Durations: 120ms for state changes, 240ms for the rail, 600ms for the cover lift
   --duration-rail:  240ms;
   --duration-lift:  600ms;
   --ease:           cubic-bezier(0.22, 0.61, 0.36, 1);
+  --lift-scale:     0.96;   /* how far the cover recedes during the lift */
 }
 ```
 
@@ -259,7 +269,7 @@ Errors explain what happened and what to do. They do not apologise and they are 
 
 Non-negotiable, and checked in every phase report:
 
-- Visible keyboard focus on every interactive element — a `--brass` outline with sufficient offset, never `outline: none`.
+- Visible keyboard focus on every interactive element — `outline: var(--focus-width) solid var(--brass)` with `outline-offset: var(--space-1)`, never `outline: none`.
 - Touch targets at least 44×44 CSS px. The shutter is far larger.
 - Every control has an accessible name. Icon-only buttons carry `aria-label`.
 - Contrast at AA: paper on leaf is far above it; `--brass` is for UI and large elements only — never small body text on the leaf.
