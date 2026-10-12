@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.astro/
+
+# Wrangler local state (local D1/R2 data, logs)
+.wrangler/
+
+# Secrets — these live in the Cloudflare dashboard, never in the repo
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+!.env.example
+
+# Test artifacts
+test-results/
+playwright-report/
+coverage/
+
+# OS
+.DS_Store

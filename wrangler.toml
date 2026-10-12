@@ -1,0 +1,26 @@
+# Cloudflare Pages configuration. `npm run preview` runs `wrangler pages dev`,
+# which serves dist/ and the functions/ directory together.
+#
+# Once Pages sees this file it treats it as the source of truth for bindings;
+# the dashboard's binding settings become read-only. See SETUP-CLOUDFLARE.md.
+
+name = "wedding-guest-book"
+compatibility_date = "2026-09-01"
+pages_build_output_dir = "./dist"
+
+# Metadata. The database is created in Phase 3 (docs/SETUP-CLOUDFLARE.md §3);
+# replace this placeholder id with the real one then. Locally, wrangler keeps a
+# SQLite file under .wrangler/ keyed by this id, so the placeholder works for dev.
+[[d1_databases]]
+binding = "DB"
+database_name = "wedding-guestbook"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+# Media. The bucket is created in Phase 3 (docs/SETUP-CLOUDFLARE.md §4).
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "wedding-media"
+
+# Secrets (WRITER_PASSPHRASE_HASH, SESSION_SIGNING_KEY) never go in this file.
+# They are encrypted variables in the Cloudflare dashboard, and in .dev.vars locally.
