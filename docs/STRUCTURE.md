@@ -32,10 +32,13 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │
 ├── public/
 │   ├── fonts/                    # self-hosted Spectral + Public Sans (woff2)
-│   ├── hero/                     # the wedding photograph, responsive sizes
+│   ├── _headers                  # Cloudflare Pages cache headers
 │   └── favicon.svg
 │
 ├── src/
+│   ├── assets/
+│   │   └── hero/                 # the wedding photograph, metadata stripped; astro:assets
+│   │                             # generates every responsive size from it at build time
 │   ├── config/
 │   │   └── site.ts               # names, date, hero path — ALL customisation
 │   │
@@ -105,6 +108,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   └── 0001_init.sql
 │
 ├── scripts/
+│   ├── prepare-hero.mjs          # original photo → stripped, resized src/assets/hero/hero.jpg
 │   ├── hash-passphrase.mjs       # generate WRITER_PASSPHRASE_HASH
 │   └── export-archive.ts         # D1 + R2 → archive repo
 │

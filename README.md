@@ -84,12 +84,12 @@ First-time Cloudflare setup — account, D1 database, R2 bucket, environment var
 
 ## Workflow
 
-Each phase is built on its own branch, reviewed, and merged to `main` before the next begins.
+Each phase is built on its own branch, reviewed, and merged into `dev-acceptance` before the next begins. `dev-acceptance` is tested on its preview URL and promoted to `main` (production) at milestones.
 
-1. Owner creates a branch for the phase.
+1. Owner creates a branch for the phase from `dev-acceptance`.
 2. Claude Code builds only that phase's scope.
 3. Claude Code writes `docs/reports/phase-<N>-<name>.md` with results and a `READY TO MERGE` / `NOT READY` verdict.
-4. Owner reviews, commits, opens a PR, merges.
-5. Repeat.
+4. Owner reviews, commits, opens a PR into `dev-acceptance`, merges.
+5. Repeat. At milestones, the owner opens a PR from `dev-acceptance` to `main`.
 
 **Claude Code performs no git operations.** Branches, commits, PRs and merges are the owner's.

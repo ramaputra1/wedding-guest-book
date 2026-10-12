@@ -77,6 +77,54 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Spectral Fallback — the system's Georgia, resized to Spectral's measurements,
+   so the swap from fallback to Spectral moves nothing (no layout shift).
+   Values are measured, not guessed: widths over a sample of the site's own
+   copy, and fontBoundingBox ascent/descent, in Chrome with both fonts loaded.
+   The overrides are divided by size-adjust because the browser applies
+   size-adjust to them too. Where Georgia is absent (Android), local() fails and
+   the stack moves on to the next family. */
+@font-face {
+  font-family: 'Spectral Fallback';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Georgia');
+  size-adjust: 99.23%;
+  ascent-override: 106.82%;
+  descent-override: 46.35%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Spectral Fallback';
+  font-style: italic;
+  font-weight: 400;
+  src: local('Georgia Italic'), local('Georgia-Italic');
+  size-adjust: 89.25%;
+  ascent-override: 118.77%;
+  descent-override: 51.54%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Spectral Fallback';
+  font-style: normal;
+  font-weight: 600;
+  src: local('Georgia Bold'), local('Georgia-Bold');
+  size-adjust: 87.99%;
+  ascent-override: 120.47%;
+  descent-override: 52.28%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Spectral Fallback';
+  font-style: italic;
+  font-weight: 600;
+  src: local('Georgia Bold Italic'), local('Georgia-BoldItalic');
+  size-adjust: 80.12%;
+  ascent-override: 132.3%;
+  descent-override: 57.41%;
+  line-gap-override: 0%;
+}
+
 /* Public Sans — functional controls only. One variable file covers every
    weight. Roman only: UI is never set in italic. */
 @font-face {

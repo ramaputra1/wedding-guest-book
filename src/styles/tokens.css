@@ -26,7 +26,7 @@
 
 /* Typography */
 :root {
-  --font-display: 'Spectral', Georgia, 'Times New Roman', serif;
+  --font-display: 'Spectral', 'Spectral Fallback', Georgia, 'Times New Roman', serif;
   --font-ui:      'Public Sans', system-ui, -apple-system, sans-serif;
 
   /* Modular scale, 1.25 (major third), 16px base */
@@ -66,4 +66,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 1px 2px rgba(0, 0, 0, 0.55),
     0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
+/* Motion */
+:root {
+  --duration-state: 120ms;
+  --duration-rail:  240ms;
+  --duration-lift:  600ms;
+  --ease:           cubic-bezier(0.22, 0.61, 0.36, 1);
 }

@@ -26,11 +26,13 @@ Allow about 30 minutes.
    | Framework preset | Astro |
    | Build command | `npm run build` |
    | Build output directory | `dist` |
-   | Node version | 20 or later |
+   | Node version | Set by `.node-version` in the repo (24.x LTS) — leave the dashboard field empty |
 
 4. Save and deploy. The first build may fail if the project is still empty — that's expected before Phase 0 is merged.
 
 Branch pushes automatically get preview URLs with their own HTTPS. Use those for iPad testing — you do not need to merge to `main` to test on a device.
+
+**Production branch is `main`.** `dev-acceptance` gets a stable preview address (`dev-acceptance.<project>.pages.dev`) — bookmark it on both iPads for testing. From Phase 3, preview deployments should use their own test D1 database and R2 bucket so test entries never touch the real album; Phase 3 sets this up.
 
 ---
 
@@ -76,6 +78,8 @@ What you're exposed to, precisely:
 | R2 bucket | `MEDIA` | `wedding-media` |
 
 The names matter — Functions read `env.DB` and `env.MEDIA`. Add the bindings to **both Production and Preview** environments, or preview deployments will fail at runtime in a way that looks like a code bug.
+
+> **To be confirmed in Phase 3.** The repo contains a `wrangler.toml` with `pages_build_output_dir`. Cloudflare documents that such a file becomes the source of truth for bindings, which would make this dashboard step read-only. Phase 3 verifies this against the real account and rewrites this section.
 
 ---
 

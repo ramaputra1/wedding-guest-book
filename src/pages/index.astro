@@ -1,9 +1,19 @@
 ---
-// Placeholder so the build has a page and the stylesheets ship.
-// Phase 1 replaces this with the landing page.
+// The public landing page: the cover, then the album.
+// Phase 2 replaces the placeholder section with the album itself.
 import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import CoverLift from '../components/CoverLift.astro';
+import { site } from '../config/site';
 ---
 
 <Base>
-  <main></main>
+  <CoverLift slot="head" />
+  <Hero />
+  <main class="album" id="album" data-lift-target>
+    <div class="album__intro">
+      <p>{site.intro}</p>
+      <p class="album__empty">Nothing here yet.</p>
+    </div>
+  </main>
 </Base>
