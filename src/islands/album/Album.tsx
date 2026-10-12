@@ -6,7 +6,9 @@ import { Spread } from './Spread';
 export const NEW_SPREAD_ID = 'new-spread';
 
 interface Props {
-  entries: AlbumEntry[];
+  /** null while the album is loading. */
+  entries: AlbumEntry[] | null;
+  loadFailed: boolean;
   mode: AlbumMode;
   intro: string;
   selectedId: string | null;
@@ -14,8 +16,10 @@ interface Props {
   copy: AlbumCopy;
 }
 
-export function Album({ entries, mode, intro, selectedId, onSelect, copy }: Props) {
-  const showBook = entries.length > 0 || mode === 'write';
+export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, copy }: Props) {
+  const loaded = entries ?? [];
+  const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
+  const status = loadFailed ? copy.loadFailed : entries === null ? copy.loading : loaded.length === 0 && mode === 'view' ? copy.emptyAlbum : null;
 
   return (
     <>
@@ -30,11 +34,15 @@ export function Album({ entries, mode, intro, selectedId, onSelect, copy }: Prop
       </svg>
 
       <p class="album__intro">{intro}</p>
-      {entries.length === 0 && mode === 'view' && <p class="album__empty">{copy.emptyAlbum}</p>}
+      {/* role=status: the change from "Opening…" to the album, or to a
+          failure, is announced without moving focus. */}
+      <p class="album__empty" role="status">
+        {status}
+      </p>
 
       {showBook && (
         <div class="book">
-          {entries.map((entry, i) => (
+          {loaded.map((entry, i) => (
             <Spread
               key={entry.id}
               entry={entry}

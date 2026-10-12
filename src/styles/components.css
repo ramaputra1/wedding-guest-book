@@ -110,6 +110,11 @@
   color: var(--on-leaf-soft);
 }
 
+/* Kept in the DOM while empty so assistive technology hears it change. */
+.album__empty:empty {
+  margin: 0;
+}
+
 /* The <svg> holding the shared ruling pattern takes no space. Its colour is
    what the pattern's currentColor resolves to. */
 .album__defs {
@@ -396,6 +401,79 @@ button.mount {
 
 .writing-page__ink {
   object-fit: contain;
+}
+
+/* ---------------------------------------------------------------------------
+ * Sign-in — the passphrase prompt on /ipad1 and /ipad2
+ * ------------------------------------------------------------------------- */
+
+.sign-in {
+  display: grid;
+  gap: var(--space-3);
+  max-inline-size: calc(var(--space-10) * 3);
+  margin-inline: auto;
+  margin-block-end: var(--space-8);
+}
+
+/* Which iPad this page signs in, so the two are never mixed up on the day. */
+.sign-in__device {
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: var(--leading-ui);
+  text-align: center;
+}
+
+.sign-in__label {
+  color: var(--on-leaf);
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  text-align: center;
+}
+
+.sign-in__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.sign-in__input {
+  flex: 1;
+  min-inline-size: 0;
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  border-radius: var(--radius-button);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  /* At least 16px, or iOS Safari zooms the page when the field is focused. */
+  font-size: var(--step-0);
+}
+
+.sign-in__submit {
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border: 0;
+  border-radius: var(--radius-button);
+  background-color: var(--photo-paper);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sign-in__submit:disabled {
+  cursor: progress;
+}
+
+/* Colour and words together. --warn alone is 4.3:1 on the leaf, short of AA
+   for small text, so it marks the edge and the message stays --on-leaf. */
+.sign-in__problem {
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--focus-width) solid var(--warn);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
 }
 
 /* ---------------------------------------------------------------------------

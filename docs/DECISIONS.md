@@ -78,7 +78,9 @@ The owner asked whether photos and videos could be saved directly on the iPad in
 
 **Known trade, accepted:** this is hand-rolled rather than off-the-shelf, which was flagged to the owner. Mitigating factors: it is a small, well-trodden pattern; the secret never reaches the browser; endpoints are tested directly with forged, missing and expired cookies; and the blast radius of a bug is a stranger adding a drawing, which is deletable and recoverable from the archive.
 
-**Revocation** is rotating `SESSION_SIGNING_KEY`, which kills every session on both iPads at once.
+**Revocation** is rotating `SESSION_SIGNING_KEY`, which kills every session on both iPads at once. Sessions are stateless, so signing out clears the cookie in that browser but cannot revoke a copied token before it expires — rotation is the revocation.
+
+**Hashing: PBKDF2-SHA256 at 20,000 iterations** (Phase 3). The usual advice is far higher, but the Workers free plan allows ~10 ms of CPU per request and 100,000 iterations measured 23 ms on an M2 Pro. The hash lives only in Cloudflare's encrypted store, so the defence that matters is a long passphrase — the hashing script refuses anything under 16 characters. The iteration count is stored inside the hash and can be raised later. There is no login rate limit: it would need a store beyond D1 and R2; the passphrase length is the answer.
 
 ---
 
@@ -161,6 +163,24 @@ Full system in `docs/DESIGN.md`.
 **Why:** `main` stays identical to production; `dev-acceptance` has a stable HTTPS preview URL for iPad testing; preview deployments can use separate test storage so test entries never reach the real album; migrations run on test data before production.
 
 **Rule:** each phase still gets its own PR and report — phases are never batched into one merge.
+
+---
+
+## D15 — Uploads in two steps: stream, then commit
+
+**Chosen:** each file of a capture is a `PUT` that streams straight into R2 and is then checked by its leading bytes; a small JSON `POST` commits the item, writing its D1 row only after confirming every file is stored.
+
+**Why:** buffering a 15 MB video through a Function to parse a multipart form costs CPU the free plan does not have; streaming costs almost none. And it matches the rule that a capture is not saved until both halves are confirmed: the commit is the one moment the D1 row appears, and the offline queue (Phase 4) has a natural place to retry. A committed item's files can never be replaced.
+
+**Rejected — one multipart POST per item** (as ARCHITECTURE first sketched): simpler, but CPU-bound on video and all-or-nothing on a flaky network.
+
+---
+
+## D16 — Canvas PNGs keyed by canvas id
+
+**Chosen:** `canvases/{entry_id}/{canvas_id}.png`.
+
+**Why:** the version number is assigned by D1 at commit, atomically, so two iPads saving the same page at the same moment get versions n and n+1. But the PNG is stored *before* commit — under `v{version}` both would have computed the same key and the second upload would silently overwrite the first. An id key cannot collide. The version still lives in the row.
 
 ---
 

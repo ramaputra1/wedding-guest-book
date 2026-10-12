@@ -34,6 +34,16 @@ export interface CameraCopy {
   destination: string;
 }
 
+/** Words on the writer's sign-in. DESIGN.md: "Enter the passphrase", not "Login to continue". */
+export interface SignInCopy {
+  label: string;
+  submit: string;
+  submitting: string;
+  wrongPassphrase: string;
+  unreachable: string;
+  notConfigured: string;
+}
+
 /**
  * Words the album uses, mostly for assistive technology. Labels are joined
  * into phrases like "Spread 3, 2 items" and "Show item 2 of 3".
@@ -50,7 +60,13 @@ export interface AlbumCopy {
   video: string;
   seconds: string;
   blankPage: string;
+  loading: string;
+  loadFailed: string;
+  photoAlt: string;
+  videoAlt: string;
+  handwrittenPage: string;
   camera: CameraCopy;
+  signIn: SignInCopy;
 }
 
 export interface SiteConfig {
@@ -136,6 +152,11 @@ export const site = {
     video: 'Video',
     seconds: 'seconds',
     blankPage: 'Blank page',
+    loading: 'Opening the album…',
+    loadFailed: "The album didn't load. Reload the page to try again.",
+    photoAlt: 'A photo from the guest book',
+    videoAlt: 'A video from the guest book',
+    handwrittenPage: 'A handwritten page',
     camera: {
       label: 'Camera',
       show: 'Show camera',
@@ -146,6 +167,14 @@ export const site = {
       takePhoto: 'Take photo',
       startRecording: 'Start recording',
       destination: 'Saves to',
+    },
+    signIn: {
+      label: 'Enter the passphrase',
+      submit: 'Sign in',
+      submitting: 'Signing in…',
+      wrongPassphrase: "That passphrase didn't match. Check it and try again.",
+      unreachable: "The guest book couldn't be reached. Check the wifi and try again.",
+      notConfigured: "Signing in isn't set up yet. The owner needs to finish the Cloudflare setup.",
     },
   },
 
