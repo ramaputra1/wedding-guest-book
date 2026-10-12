@@ -73,7 +73,7 @@ These came from the approved plan. Do not relitigate them; `docs/DECISIONS.md` r
 | `ulid` | Time-sortable, collision-free IDs |
 | `idb` | IndexedDB wrapper for the offline queue |
 
-Adding a fifth requires asking the owner first and justifying it. Build-time tooling (`astro`, `@astrojs/preact`, `@astrojs/cloudflare`, `typescript`, `wrangler`, `vitest`, `@playwright/test`) is not capped but should stay minimal.
+Adding a fifth requires asking the owner first and justifying it. Build-time tooling (`astro`, `@astrojs/preact`, `sharp`, `typescript`, `wrangler`, `vitest`, `@playwright/test`) is not capped but should stay minimal. **Do not add an Astro server adapter** (`@astrojs/cloudflare` or any other): it makes Cloudflare Pages ignore `functions/`. See `docs/DECISIONS.md` D13.
 
 ---
 

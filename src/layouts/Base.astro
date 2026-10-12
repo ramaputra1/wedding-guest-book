@@ -11,15 +11,24 @@ interface Props {
 }
 
 const { title = site.title } = Astro.props;
+
+// The two faces the cover needs at first paint are preloaded: fetching them
+// alongside the stylesheet, rather than after it, keeps the names from
+// visibly swapping font after the photograph appears.
 ---
 
 <!doctype html>
 <html lang={site.lang}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content={site.description} />
+    <meta name="theme-color" content="#12151C" />{/* --leaf; meta tags cannot read CSS */}
     <title>{title}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/spectral-latin-400-italic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/spectral-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <slot name="head" />
   </head>
   <body>
     <slot />

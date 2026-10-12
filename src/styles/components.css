@@ -1,4 +1,141 @@
 /*
- * Components: mount, writing page, rail, gutter.
- * Empty until Phase 2. Loaded after tokens.css and base.css.
+ * Components. Values come only from tokens.css.
+ * Mount, writing page, rail and gutter arrive in Phase 2.
  */
+
+/* ---------------------------------------------------------------------------
+ * Hero — the cover
+ *
+ * The hero sticks to the top of the viewport while the album scrolls up over
+ * it, so the album reads as a page laid on top of the cover photograph.
+ * ------------------------------------------------------------------------- */
+
+.hero {
+  position: sticky;
+  inset-block-start: 0;
+  block-size: 100vh;
+  /* svh, not dvh: dvh resizes while iOS toolbars collapse mid-scroll, which
+     would rescale the photograph under the reader's thumb. */
+  block-size: 100svh;
+  overflow: hidden;
+  background-color: var(--leaf);
+}
+
+.hero[data-focus='center'] { --hero-focus-x: 50%; }
+.hero[data-focus='left']   { --hero-focus-x: 0%; }
+.hero[data-focus='right']  { --hero-focus-x: 100%; }
+
+.hero__cover {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  block-size: 100%;
+}
+
+.hero__photo,
+.hero__photo img {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.hero__photo img {
+  object-fit: cover;
+  object-position: var(--hero-focus-x, 50%) 50%;
+}
+
+/*
+ * Legibility comes from where the type sits, not from darkening the picture.
+ * site.ts places the names over the part of the photograph that is already
+ * dark and quiet — here, the shaded lawn — so the photograph keeps its light.
+ * Contrast at each breakpoint is measured in the Phase 1 report.
+ */
+.hero__title {
+  position: relative;
+  align-self: end;
+  /* Full width, text centred inside. A shrink-wrapped box would change size
+     when Spectral replaces the wider fallback face, which counts as layout
+     shift; a full-width box does not move. */
+  justify-self: stretch;
+  padding-inline: var(--page-margin);
+  padding-block-end: calc(var(--space-9) + env(safe-area-inset-bottom, 0px));
+  color: var(--on-leaf);
+  text-align: center;
+}
+
+.hero[data-text-placement='center'] .hero__title {
+  align-self: center;
+  padding-block-end: 0;
+}
+
+.hero__names {
+  font-size: var(--step-hero);
+  font-style: italic;
+  line-height: var(--leading-tight);
+}
+
+.hero__date {
+  margin-block-start: var(--space-3);
+  font-size: var(--step-2);
+  line-height: var(--leading-tight);
+}
+
+/* ---------------------------------------------------------------------------
+ * Album — placeholder until Phase 2
+ * ------------------------------------------------------------------------- */
+
+.album {
+  /* Paints above the sticky hero as it scrolls up over it. */
+  position: relative;
+  z-index: 1;
+  min-block-size: 100vh;
+  min-block-size: 100svh;
+  padding-block: var(--space-9);
+  padding-inline: var(--page-margin);
+  background-color: var(--leaf);
+}
+
+.album__intro {
+  text-align: center;
+}
+
+.album__empty {
+  margin-block-start: var(--space-4);
+  color: var(--on-leaf-soft);
+}
+
+/* ---------------------------------------------------------------------------
+ * Cover lift — the one orchestrated motion (CoverLift.astro adds the classes)
+ *
+ * `lift-ready` is set before first paint only when motion is allowed; `lifted`
+ * is set once, when the album first enters the viewport. Transforms only, so
+ * nothing reflows and nothing counts as layout shift.
+ * ------------------------------------------------------------------------- */
+
+.lift-ready .hero__cover {
+  transition: transform var(--duration-lift) var(--ease);
+}
+
+.lift-ready .album {
+  transform: translateY(var(--space-8));
+  transition: transform var(--duration-lift) var(--ease);
+}
+
+/* The photograph recedes into the leaf as the first spread rises over it. */
+.lifted .hero__cover {
+  transform: scale(0.96);
+}
+
+.lifted .album {
+  transform: none;
+}
+
+/* The script already skips the lift under reduced motion; this covers a
+   preference changed after the page has loaded. */
+@media (prefers-reduced-motion: reduce) {
+  .lift-ready .album,
+  .lifted .hero__cover {
+    transform: none;
+  }
+}

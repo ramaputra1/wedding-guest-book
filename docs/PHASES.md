@@ -1,6 +1,6 @@
 # Build Phases
 
-Nine phases. Each is built on its own branch, reviewed, and merged to `main` before the next begins.
+Nine phases. Each is built on its own branch, reviewed, and merged into `dev-acceptance` before the next begins. `dev-acceptance` is promoted to `main` (production) at milestones.
 
 ---
 
@@ -9,8 +9,12 @@ Nine phases. Each is built on its own branch, reviewed, and merged to `main` bef
 ```
 owner creates branch  →  Claude builds ONLY that phase  →  Claude writes
 docs/reports/phase-<N>-<slug>.md with a verdict  →  owner reviews,
-commits, opens PR, merges  →  next branch
+commits, opens PR into dev-acceptance, merges  →  next branch
+
+at milestones:  dev-acceptance  ──PR──►  main (production)
 ```
+
+`dev-acceptance` has its own Cloudflare Pages preview URL — the place to test on the iPads. Fixes go to `dev-acceptance` first; if one ever lands on `main` directly, merge it back into `dev-acceptance` straight away.
 
 **Claude Code performs no git operations.** See `CLAUDE.md`.
 
@@ -39,7 +43,7 @@ Scaffold the project and lock the design system in code. No features.
 
 **Build**
 - Astro + TypeScript project, `strict: true`
-- `@astrojs/preact` and `@astrojs/cloudflare` configured
+- `@astrojs/preact` configured. **No server adapter** — `@astrojs/cloudflare` disables `functions/`; see `DECISIONS.md` D13
 - `wrangler.toml` with D1 and R2 bindings declared (services created in Phase 3)
 - Directory skeleton per `docs/STRUCTURE.md`
 - `src/styles/tokens.css` — every custom property from `docs/DESIGN.md`, verbatim

@@ -62,9 +62,11 @@ Spectral is chosen over Cormorant and Playfair, which are the wedding-site refle
 
 Public Sans stays small and quiet. It never competes, and it never appears in editorial content.
 
+**`Spectral Fallback`** is the system's Georgia, resized with `size-adjust` and `ascent-override`/`descent-override` to Spectral's measurements (declared in `base.css`). While Spectral is still downloading, text is set in it, so when Spectral arrives the names do not jump. It is a loading aid, not a third typeface — never name it directly.
+
 ```css
 :root {
-  --font-display: 'Spectral', Georgia, 'Times New Roman', serif;
+  --font-display: 'Spectral', 'Spectral Fallback', Georgia, 'Times New Roman', serif;
   --font-ui:      'Public Sans', system-ui, -apple-system, sans-serif;
 
   /* Modular scale, 1.25 (major third), 16px base */
@@ -222,6 +224,15 @@ Forbidden: fade-and-slide-up on every section, hover transitions on every card, 
 ```
 
 Durations: 120ms for state changes, 240ms for the rail, 600ms for the cover lift. Easing `cubic-bezier(0.22, 0.61, 0.36, 1)` — never `linear`, never a bounce.
+
+```css
+:root {
+  --duration-state: 120ms;
+  --duration-rail:  240ms;
+  --duration-lift:  600ms;
+  --ease:           cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+```
 
 ---
 

@@ -1,0 +1,75 @@
+---
+// The landing cover: the photograph full-bleed, the names set on it.
+// Static — nothing here hydrates. Every value comes from site.ts.
+import { getImage } from 'astro:assets';
+import { site } from '../config/site';
+
+const { image, alt, focus, textPlacement } = site.hero;
+const [firstName, secondName] = site.couple.names;
+
+// sharp's crop gravity for each focus setting. components.css maps the same
+// setting (via data-focus) to object-position, so the browser's own cover-crop
+// keeps the same part of the picture.
+const cropGravity = { center: 'centre', left: 'west', right: 'east' }[focus];
+
+// Two crops of one photograph. A tall phone screen would otherwise download
+// a full landscape frame only to show its middle third; the portrait crop
+// cuts those bytes to roughly a third.
+const landscapeWidths = [640, 960, 1280, 1600, 1920, 2560, 3200, 3840];
+const portraitWidths = [480, 720, 960, 1280, 1707];
+
+// The photo covers the viewport, so on a screen narrower than the photo's
+// aspect it renders wider than 100vw. These sizes say how much wider, so the
+// browser picks a sharp enough file instead of upscaling a small one.
+// 66vh is a hair under the true 2/3 of the height on purpose: the exact value
+// lands just past the 960w file on common phones and pulls the 1280w one,
+// 60% more bytes for no visible gain.
+const landscapeSizes = '(max-aspect-ratio: 3/2) 150vh, 100vw';
+const portraitSizes = '(max-aspect-ratio: 2/3) 66vh, 100vw';
+const portraitMedia = '(max-aspect-ratio: 4/5)';
+
+const portraitCrop = {
+  src: image,
+  width: 1707,
+  height: 2560,
+  fit: 'cover',
+  position: cropGravity,
+  widths: portraitWidths,
+} as const;
+const landscapeFull = { src: image, widths: landscapeWidths } as const;
+
+const [portraitAvif, portraitWebp, landscapeAvif, landscapeWebp, fallback] = await Promise.all([
+  getImage({ ...portraitCrop, format: 'avif', quality: 55 }),
+  getImage({ ...portraitCrop, format: 'webp', quality: 72 }),
+  getImage({ ...landscapeFull, format: 'avif', quality: 55 }),
+  getImage({ ...landscapeFull, format: 'webp', quality: 72 }),
+  getImage({ src: image, width: 1920, widths: [1280, 1920, 2560], format: 'jpg', quality: 78 }),
+]);
+---
+
+<header class="hero" data-focus={focus} data-text-placement={textPlacement}>
+  <div class="hero__cover" data-lift-cover>
+    <picture class="hero__photo">
+      <source media={portraitMedia} type="image/avif" srcset={portraitAvif.srcSet.attribute} sizes={portraitSizes} />
+      <source media={portraitMedia} type="image/webp" srcset={portraitWebp.srcSet.attribute} sizes={portraitSizes} />
+      <source type="image/avif" srcset={landscapeAvif.srcSet.attribute} sizes={landscapeSizes} />
+      <source type="image/webp" srcset={landscapeWebp.srcSet.attribute} sizes={landscapeSizes} />
+      <img
+        src={fallback.src}
+        srcset={fallback.srcSet.attribute}
+        sizes={landscapeSizes}
+        width={image.width}
+        height={image.height}
+        alt={alt}
+        loading="eager"
+        decoding="async"
+        fetchpriority="high"
+      />
+    </picture>
+
+    <div class="hero__title">
+      <h1 class="hero__names">{firstName} {site.couple.joiner} {secondName}</h1>
+      <p class="hero__date"><time datetime={site.date.iso}>{site.date.display}</time></p>
+    </div>
+  </div>
+</header>

@@ -1,0 +1,32 @@
+---
+// The site's one orchestrated motion (DESIGN.md, Motion): when the album first
+// comes into view, the cover photograph recedes and the first spread rises
+// over it. It runs once, then the observer is gone.
+//
+// This is the only JavaScript the landing page ships. It is inline because it
+// must mark <html> before first paint, or the album would visibly jump.
+// Without JavaScript, or under prefers-reduced-motion, nothing moves at all:
+// the `lift-ready` class is never added, so no initial offset is applied.
+---
+
+<script is:inline>
+  (() => {
+    const root = document.documentElement;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion || !('IntersectionObserver' in window)) return;
+
+    root.classList.add('lift-ready');
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const album = document.querySelector('[data-lift-target]');
+      if (!album) return;
+
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        root.classList.add('lifted');
+        observer.disconnect();
+      });
+      observer.observe(album);
+    });
+  })();
+</script>

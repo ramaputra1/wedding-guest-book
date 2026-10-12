@@ -140,6 +140,28 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D13 — No Astro server adapter
+
+**Chosen:** Astro builds a fully static site (`output: 'static'`, no adapter). Cloudflare Pages serves `dist/`, and Pages Functions in `functions/` serve `/api/*`. `npm run preview` runs both through `wrangler pages dev`.
+
+**Rejected — `@astrojs/cloudflare`.** Tested in Phase 0, not assumed. v13+ targets Cloudflare *Workers* only; against a Pages `wrangler.toml` its build fails (`The name 'ASSETS' is reserved in Pages projects`) and it enables KV-session and Images bindings by default. v12 supports Pages but emits `dist/_worker.js`, which switches Pages into "advanced mode" and **silently ignores the `functions/` directory** — the whole API.
+
+**What it costs:** nothing the plan uses. All server logic was already in `functions/` and `lib-server/`. `/ipad1` and `/ipad2` are static pages with the device id fixed at build time, which is correct — the route is identity, not authorization.
+
+**Do not "fix" this by adding the adapter back.** If server-rendered Astro pages are ever needed, raise it with the owner first.
+
+---
+
+## D14 — Branch flow through `dev-acceptance`
+
+**Chosen:** each phase branch merges into `dev-acceptance`; `dev-acceptance` is promoted to `main` (production) at milestones.
+
+**Why:** `main` stays identical to production; `dev-acceptance` has a stable HTTPS preview URL for iPad testing; preview deployments can use separate test storage so test entries never reach the real album; migrations run on test data before production.
+
+**Rule:** each phase still gets its own PR and report — phases are never batched into one merge.
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.
