@@ -1,0 +1,69 @@
+/*
+ * Design tokens — copied verbatim from docs/DESIGN.md, which is the authority.
+ * Do not add a value here that DESIGN.md does not define; propose it there first.
+ */
+
+/* Color */
+:root {
+  --leaf:          #12151C;  /* the album page — deep ink blue-black, not neutral */
+  --leaf-raised:   #1C2029;  /* gutter seam, camera rail, elevated surfaces */
+  --leaf-edge:     #0C0E13;  /* recesses, the gutter's deepest point */
+
+  --photo-paper:   #FBFAF7;  /* media mounts — cool white, as photographic paper is */
+  --writing-paper: #EFE8DA;  /* handwriting pages — warm, as writing paper is */
+
+  --ink:           #1A2238;  /* handwriting + text on paper — fountain-pen blue-black */
+  --ink-soft:      #4A5268;  /* secondary text on paper */
+
+  --brass:         #A08A52;  /* STATE ONLY — selected, active, confirmed */
+  --brass-dim:     #6B5C38;  /* brass at rest, e.g. an inactive corner hint */
+
+  --on-leaf:       #E8E4DC;  /* text directly on the leaf */
+  --on-leaf-soft:  #8A8E98;  /* secondary text on the leaf */
+
+  --warn:          #B4654A;  /* unsaved / retry states — used sparingly */
+}
+
+/* Typography */
+:root {
+  --font-display: 'Spectral', Georgia, 'Times New Roman', serif;
+  --font-ui:      'Public Sans', system-ui, -apple-system, sans-serif;
+
+  /* Modular scale, 1.25 (major third), 16px base */
+  --step--1: 0.8rem;
+  --step-0:  1rem;
+  --step-1:  1.25rem;
+  --step-2:  1.563rem;
+  --step-3:  1.953rem;
+  --step-4:  2.441rem;
+  --step-5:  3.052rem;
+  --step-hero: clamp(2.75rem, 11vw, 8rem);
+
+  --leading-tight: 1.15;
+  --leading-body:  1.6;   /* serif body wants more than a sans would */
+  --leading-ui:    1.4;
+}
+
+/* Spacing, radii, elevation */
+:root {
+  --space-1:  0.25rem;   --space-2:  0.5rem;    --space-3:  0.75rem;
+  --space-4:  1rem;      --space-5:  1.5rem;    --space-6:  2rem;
+  --space-7:  3rem;      --space-8:  4rem;      --space-9:  6rem;
+  --space-10: 8rem;
+
+  --gutter-width: clamp(1.5rem, 4vw, 4rem);
+  --page-margin:  clamp(1rem, 4vw, 4rem);
+
+  /* Radii differ on purpose — do not give everything the same one */
+  --radius-mount:  2px;     /* prints are square; this is just anti-aliasing */
+  --radius-paper:  3px;
+  --radius-button: 4px;
+  --radius-pill:   999px;   /* the shutter, and only the shutter */
+
+  /* A mounted print reads as mounted because of a fine light edge along its
+     top, not a grey blur beneath it. */
+  --mount-lift:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 10px 28px rgba(0, 0, 0, 0.38);
+}

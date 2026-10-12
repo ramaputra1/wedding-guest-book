@@ -1,0 +1,27 @@
+{
+  "name": "wedding-guest-book",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler pages dev",
+    "typecheck": "astro sync && tsc --noEmit"
+  },
+  "dependencies": {
+    "idb": "8.0.4",
+    "perfect-freehand": "1.2.3",
+    "preact": "10.29.8",
+    "ulid": "3.0.2"
+  },
+  "devDependencies": {
+    "@astrojs/preact": "6.0.6",
+    "astro": "7.3.8",
+    "typescript": "5.9.3",
+    "wrangler": "4.149.0"
+  }
+}
