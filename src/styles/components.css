@@ -292,9 +292,10 @@ button.mount--open {
   cursor: pointer;
 }
 
-/* Play / Pause / Sound on, in the corner opposite the duration: a full-size
-   target on the same leaf plate as the badge. */
-.mount__playback {
+/* "Sound on": shown only when the browser started a video silently. On the
+   same leaf plate as the duration badge, in the opposite corner, and a
+   full-size target. (No Play / Pause plate: a tap on the video does that.) */
+.mount__sound {
   position: absolute;
   /* Centred on the same line as the duration badge, which is shorter. */
   inset-block-end: var(--space-1);
@@ -312,32 +313,28 @@ button.mount--open {
   cursor: pointer;
 }
 
-/* Delete (writer iPads): appears in the middle of the print once its number
-   is tapped. A plain leaf disc with a hairline ring — not --warn, which means
-   "not saved", and not --brass, which is state. A circle is geometry here,
-   not a radius choice. */
-.mount__remove {
+/* "Delete" (writer iPads, owner request): the word, underlined, at the top
+   right of every saved photo or video, on the same leaf plate as the
+   duration badge so it reads over any picture. Not --warn (that means "not
+   saved") and not --brass (state). It asks before anything happens. */
+.mount__delete {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  inline-size: var(--space-8);
-  block-size: var(--space-8);
-  margin: auto;
-  padding: 0;
-  border: var(--rule-width) solid var(--on-leaf-soft);
-  border-radius: 50%;
+  inset-block-start: var(--space-1);
+  inset-inline-end: calc(var(--space-5) + var(--space-2));
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-mount);
   background-color: var(--leaf);
   color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  text-decoration: underline;
+  text-decoration-thickness: var(--rule-width);
+  text-underline-offset: var(--space-1);
   cursor: pointer;
-}
-
-.mount__remove svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* A video looks like any other print; only this badge says it moves. */

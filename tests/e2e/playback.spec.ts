@@ -12,7 +12,8 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { addTo, allSaved, cameraReady, openPage, seedEntry, serverEntries, signIn } from './helpers';
 
 const inline = (page: Page, entryId: string) => page.locator(`[data-spread-id="${entryId}"] video.mount__media`);
-const control = (page: Page, entryId: string) => page.locator(`[data-spread-id="${entryId}"] .mount__playback`);
+/** "Sound on" — the one plate a video may show, only when the browser started it silently. */
+const soundOn = (page: Page, entryId: string) => page.locator(`[data-spread-id="${entryId}"] .mount__sound`);
 
 /** Playing for real: not paused, and the clock moving. */
 async function expectPlaying(video: Locator) {
@@ -73,22 +74,38 @@ test('a saved video plays by itself in its mount: with sound, looping', async ({
     volume: 1,
     loop: true,
   });
-  await expect(control(page, entryId)).toHaveText('Pause');
+  // No Play / Pause plate on the video (owner request), and no "Sound on" while it has sound.
+  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__print button:not(.mount__delete)`)).toHaveCount(0);
+  await expect(video).toHaveAttribute('aria-label', /\. Pause$/);
 
-  // Pause stays paused, even in view; Play brings it back.
-  await control(page, entryId).click();
+  // A tap pauses, and it stays paused even in view; another tap plays.
+  await video.click();
   await expectPaused(video);
   await page.waitForTimeout(1_000);
   await expectPaused(video);
-  await expect(control(page, entryId)).toHaveText('Play');
-  await control(page, entryId).click();
+  await expect(video).toHaveAttribute('aria-label', /\. Play$/);
+  await video.click();
   await expectPlaying(video);
 
-  // The public album does not autoplay: there the visitor opens the video.
+  // Keyboard: the video takes focus, and Space or Enter pauses and plays it.
+  await video.focus();
+  await page.keyboard.press('Space');
+  await expectPaused(video);
+  await page.keyboard.press('Enter');
+  await expectPlaying(video);
+
+  // The public album does not autoplay in the mount: the visitor opens the
+  // video, and there it plays — looping, as everywhere (owner request).
   await page.goto('/');
   await page.locator('#album').scrollIntoViewIfNeeded();
   await expect(page.locator(`[data-spread-id="${entryId}"] video`)).toHaveCount(0);
-  await expect(page.locator(`[data-spread-id="${entryId}"] button.mount--open`)).toBeVisible();
+  await page.locator(`[data-spread-id="${entryId}"] button.mount--open`).click();
+  const viewer = page.locator('dialog.viewer video');
+  await expectPlaying(viewer);
+  expect(await viewer.evaluate((v: HTMLVideoElement) => v.loop)).toBe(true);
+  // Past the end of the 3-second clip, it is still playing: it went round again.
+  await page.waitForTimeout(4_000);
+  await expectPlaying(viewer);
 });
 
 test('one voice at a time: only one video plays, and a tapped one takes over', async ({ page }) => {
@@ -107,7 +124,7 @@ test('one voice at a time: only one video plays, and a tapped one takes over', a
 
   const quiet = (await inline(page, first).evaluate((v: HTMLVideoElement) => v.paused)) ? first : second;
   const loud = quiet === first ? second : first;
-  await control(page, quiet).click();
+  await inline(page, quiet).click();
   await expectPlaying(inline(page, quiet));
   await expectPaused(inline(page, loud));
 });
@@ -141,7 +158,7 @@ test('videos pause while another video is recorded, and while the pen is on a pa
   await expect(page.locator('.shutter')).toHaveAttribute('data-recording', 'true');
   await expectPaused(video);
   // Not even a tap plays it while recording.
-  await control(page, entryId).click();
+  await video.click();
   await page.waitForTimeout(500);
   await expectPaused(video);
   await page.locator('.shutter').click(); // stop
@@ -177,12 +194,12 @@ test('if the browser refuses sound without a tap, the video plays silently and "
   const video = inline(page, entryId);
   await expectPlaying(video);
   expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
-  await expect(control(page, entryId)).toHaveText('Sound on');
+  await expect(soundOn(page, entryId)).toHaveText('Sound on');
 
-  await control(page, entryId).click();
+  await soundOn(page, entryId).click();
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(false);
   await expectPlaying(video);
-  await expect(control(page, entryId)).toHaveText('Pause');
+  await expect(soundOn(page, entryId)).toHaveCount(0);
 });
 
 test('with reduced motion nothing plays by itself; Play still works', async ({ page }) => {
@@ -193,7 +210,7 @@ test('with reduced motion nothing plays by itself; Play still works', async ({ p
   const video = inline(page, entryId);
   await page.waitForTimeout(1_500);
   await expectPaused(video);
-  await expect(control(page, entryId)).toHaveText('Play');
-  await control(page, entryId).click();
+  await expect(video).toHaveAttribute('aria-label', /\. Play$/);
+  await video.click();
   await expectPlaying(video);
 });

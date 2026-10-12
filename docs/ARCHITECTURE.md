@@ -227,7 +227,7 @@ A capture is not "saved" until storage confirms it. The sequence:
 
 ## Removing a photo or video
 
-Owner request after Phase 5. On a writer iPad, tapping an item's number shows a trash button in the middle of it. The button asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
+Owner request after Phase 5. On a writer iPad every saved photo or video on show has **Delete** at its top right. It asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
 
 **Nothing is erased.** `DELETE /api/media/{id}` (session required) inserts one row into `media_removals`. The `media` row and its files in R2 stay:
 

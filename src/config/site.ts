@@ -95,7 +95,9 @@ export interface PageCopy {
 /** Words in the full-size viewer on the public album. */
 /** Deleting a photo or video from a spread (writer iPads). */
 export interface RemoveCopy {
-  /** The trash button's name: "Delete this photo" / "Delete this video". */
+  /** The word on the button, top right of each photo or video. */
+  label: string;
+  /** Its full name: "Delete this photo" / "Delete this video". */
   buttonPhoto: string;
   buttonVideo: string;
   questionPhoto: string;
@@ -252,6 +254,7 @@ export const site = {
     addTo: 'Add a photo or video to',
     playback: { play: 'Play', pause: 'Pause', soundOn: 'Sound on' },
     remove: {
+      label: 'Delete',
       buttonPhoto: 'Delete this photo',
       buttonVideo: 'Delete this video',
       questionPhoto: 'Delete this photo?',

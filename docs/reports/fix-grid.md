@@ -282,3 +282,31 @@ npx wrangler d1 migrations apply wedding-guestbook --remote
 4. The other iPad no longer shows it after a reload.
 
 **Verdict:** **READY TO MERGE**, once the test-database migration above has been applied.
+
+---
+
+# Round 6 — 2026-10-12
+
+| Request | Result | Evidence |
+|---|---|---|
+| Replace the trash icon with the word "Delete", underlined, top right of every photo and video; a tap asks to confirm | PASS | e2e `delete.spec.ts`: "Delete" is visible from the start on every saved item, underlined, in the top-right quarter of the print, ≥ 44 × 44, and named "Delete this photo" / "Delete this video". It is absent on the live camera. No / Escape / Yes work as before. Round 5's trash icon and its "tap a number first" rule are gone. |
+| Remove the Play and Pause box on videos | PASS | e2e: no button other than "Delete" on a playing video. A tap on the video pauses and plays it. |
+| Videos loop everywhere | PASS | The public album's viewer now loops too (the iPad mounts already did). e2e: the viewer's video has `loop`, and is still playing 4 s into a 3-second clip. |
+
+**Kept on purpose:**
+- **Keyboard and screen readers.** With the Play/Pause box gone, the video itself takes keyboard focus. Enter or Space pauses and plays it, and its name ends in what a press will do ("… Pause" / "… Play"). Sound that starts by itself must stay stoppable (WCAG 1.4.2).
+- **"Sound on".** This is the only plate a video can still show, and only when the browser refused to start sound without a tap (iOS Safari may). Without it nobody would know there is sound. It disappears once the sound is on. If the owner prefers it gone too, tapping the video already turns the sound on.
+
+**Files:**
+- `album/MediaMount.tsx`: "Delete" button; no playback plate; the video is focusable.
+- `album/MediaViewer.tsx`: `loop`.
+- `config/site.ts`: `remove.label`.
+- `components.css`: `.mount__delete` and `.mount__sound` replace `.mount__remove` and `.mount__playback`.
+- `tests/e2e/delete.spec.ts`, `tests/e2e/playback.spec.ts`.
+- Docs: `DESIGN.md`, `ARCHITECTURE.md`, `TESTING.md`.
+
+**Tests:** `npm run typecheck` clean · `npm test` 157 passed · `npm run test:e2e` 48 passed.
+
+**Owner action (from Round 5, still needed):** apply `0002_media_removals.sql` to the test database before merging into `dev-acceptance`.
+
+**Verdict:** **READY TO MERGE.**

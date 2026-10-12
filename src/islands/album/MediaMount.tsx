@@ -70,10 +70,12 @@ type Playback = 'paused' | 'playing' | 'muted';
 
 /**
  * A saved video on a writer iPad: it plays in its mount by itself, with
- * sound, looping, one at a time (playback.ts). The button — and a tap on the
- * video — plays, pauses, or turns the sound on when the browser started it
- * silently. Pausing must be possible: audio that starts on its own needs a
- * way to stop it (WCAG 1.4.2).
+ * sound, looping, one at a time (playback.ts). There is no Play / Pause
+ * button on it (owner request): a tap on the video plays or pauses it, and
+ * so do Enter and Space when it has keyboard focus — audio that starts on its
+ * own must stay stoppable (WCAG 1.4.2). The one plate it may show is "Sound
+ * on", only when the browser started it silently: without it nobody would
+ * know there is sound to turn on.
  */
 function InlineVideo({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -100,16 +102,26 @@ function InlineVideo({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
         class="mount__media mount__media--inline"
         src={item.fullSrc}
         poster={item.posterSrc ?? item.src}
-        aria-label={item.alt}
+        // A keyboard user reaches it and hears what a press will do.
+        tabIndex={0}
+        aria-label={`${item.alt}. ${action}`}
+        data-state={state}
         loop
         playsInline
         preload="metadata"
         onClick={toggle}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          toggle();
+        }}
       />
       <Duration item={item} copy={copy} />
-      <button type="button" class="mount__playback" data-state={state} onClick={toggle}>
-        {action}
-      </button>
+      {state === 'muted' && (
+        <button type="button" class="mount__sound" onClick={toggle}>
+          {copy.playback.soundOn}
+        </button>
+      )}
     </span>
   );
 }
@@ -198,8 +210,6 @@ function SaveStatus({ media, copy, onRetry, onDiscard }: { media: AlbumMedia[]; 
  */
 export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, canAdd, onRemove, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const [index, setIndex] = useState(0);
-  /** The item whose number was tapped: it shows the trash button (owner request). */
-  const [armedId, setArmedId] = useState<string | null>(null);
   // A new capture landing here comes into view on its own.
   const previousCount = useRef(media.length);
   useEffect(() => {
@@ -223,8 +233,6 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
     const from = showLive ? media.length : Math.min(index, media.length - 1);
     const to = from + direction;
     if (to >= 0 && to < media.length) show(to);
-    // Swiping is browsing; the trash comes only from tapping a number.
-    setArmedId(null);
   });
 
   const itemCount = media.length === 1 ? `1 ${copy.item}` : `${media.length} ${copy.items}`;
@@ -240,8 +248,9 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
   // album a single print needs no navigation.
   const showNumbers = writing ? media.length > 0 : media.length > 1;
 
-  // Only a saved item can be deleted; one still on its way has "Saving…" instead.
-  const removable = mode === 'write' && !showLive && current !== undefined && !current.pending && current.id === armedId && onRemove !== undefined;
+  // Every saved photo or video on show carries "Delete" (owner request). One
+  // still on its way has "Saving…" instead, and the live camera has neither.
+  const removable = mode === 'write' && !showLive && current !== undefined && !current.pending && onRemove !== undefined;
 
   const frame = (
     <span class="mount__frame">
@@ -257,7 +266,8 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
       {removable && (
         <button
           type="button"
-          class="mount__remove"
+          class="mount__delete"
+          // The name holds the visible word (WCAG 2.5.3) and says what goes.
           aria-label={current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}
           onClick={(event) => {
             // Not a tap on the video beneath, which would play or pause it.
@@ -265,9 +275,7 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
             onRemove(current);
           }}
         >
-          <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false">
-            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" />
-          </svg>
+          {copy.remove.label}
         </button>
       )}
       <PhotoCorners />
@@ -319,10 +327,7 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
               class="numbers__item"
               aria-current={i === index && !showLive ? 'true' : undefined}
               aria-label={`${copy.showItem} ${i + 1} ${copy.of} ${media.length}`}
-              onClick={() => {
-                show(i);
-                setArmedId(item.id);
-              }}
+              onClick={() => show(i)}
             >
               {i + 1}
             </button>
