@@ -12,8 +12,6 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { addTo, allSaved, cameraReady, openPage, seedEntry, serverEntries, signIn } from './helpers';
 
 const inline = (page: Page, entryId: string) => page.locator(`[data-spread-id="${entryId}"] video.mount__media`);
-/** "Sound on" — the one plate a video may show, only when the browser started it silently. */
-const soundOn = (page: Page, entryId: string) => page.locator(`[data-spread-id="${entryId}"] .mount__sound`);
 
 /** Playing for real: not paused, and the clock moving. */
 async function expectPlaying(video: Locator) {
@@ -74,8 +72,8 @@ test('a saved video plays by itself in its mount: with sound, looping', async ({
     volume: 1,
     loop: true,
   });
-  // No Play / Pause plate on the video (owner request), and no "Sound on" while it has sound.
-  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__print button:not(.mount__delete)`)).toHaveCount(0);
+  // No Play / Pause or "Sound on" plate on the video (owner request): nothing but the video.
+  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__print button`)).toHaveCount(0);
   await expect(video).toHaveAttribute('aria-label', /\. Pause$/);
 
   // A tap pauses, and it stays paused even in view; another tap plays.
@@ -94,18 +92,46 @@ test('a saved video plays by itself in its mount: with sound, looping', async ({
   await page.keyboard.press('Enter');
   await expectPlaying(video);
 
-  // The public album does not autoplay in the mount: the visitor opens the
-  // video, and there it plays — looping, as everywhere (owner request).
+});
+
+test('the public album: a tap plays and pauses a video in place, with sound, looping; the expand icon opens it full screen', async ({ page }) => {
+  const entryId = await seedEntry(page, 0, { videos: 1 });
+  await page.context().clearCookies();
+  // Past the shared 30-second cache, as a visitor arriving later would be.
+  await page.route('**/api/entries', (route) => route.continue({ url: `${new URL(route.request().url()).origin}/api/entries?visitor=${Date.now()}` }));
   await page.goto('/');
   await page.locator('#album').scrollIntoViewIfNeeded();
-  await expect(page.locator(`[data-spread-id="${entryId}"] video`)).toHaveCount(0);
-  await page.locator(`[data-spread-id="${entryId}"] button.mount--open`).click();
+  await page.locator(`[data-spread-id="${entryId}"]`).scrollIntoViewIfNeeded();
+  const video = inline(page, entryId);
+
+  // Waits for a tap: nothing starts by itself for a visitor.
+  await page.waitForTimeout(1_500);
+  await expectPaused(video);
+  await video.click();
+  await expectPlaying(video);
+  expect(await video.evaluate((v: HTMLVideoElement) => ({ muted: v.muted, loop: v.loop }))).toEqual({ muted: false, loop: true });
+  // Past the end of the 3-second clip, it is still playing: it went round again.
+  await page.waitForTimeout(4_000);
+  await expectPlaying(video);
+  await video.click();
+  await expectPaused(video);
+
+  // The expand icon, bottom right: full screen, looping; the copy in the mount waits.
+  await video.click();
+  await expectPlaying(video);
+  const expand = page.locator(`[data-spread-id="${entryId}"] .mount__expand`);
+  await expect(expand).toHaveAccessibleName(/^View full screen, /);
+  const print = (await page.locator(`[data-spread-id="${entryId}"] .mount__frame`).boundingBox())!;
+  const icon = (await expand.boundingBox())!;
+  expect(icon.x + icon.width).toBeGreaterThan(print.x + print.width * 0.75);
+  expect(icon.y + icon.height).toBeGreaterThan(print.y + print.height * 0.75);
+  await expand.click();
   const viewer = page.locator('dialog.viewer video');
   await expectPlaying(viewer);
   expect(await viewer.evaluate((v: HTMLVideoElement) => v.loop)).toBe(true);
-  // Past the end of the 3-second clip, it is still playing: it went round again.
-  await page.waitForTimeout(4_000);
-  await expectPlaying(viewer);
+  await expectPaused(video);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('dialog.viewer')).toHaveCount(0);
 });
 
 test('one voice at a time: only one video plays, and a tapped one takes over', async ({ page }) => {
@@ -169,7 +195,7 @@ test('videos pause while another video is recorded, and while the pen is on a pa
     .toBe(true);
 });
 
-test('if the browser refuses sound without a tap, the video plays silently and "Sound on" turns it on', async ({ page }) => {
+test('if the browser refuses sound without a tap, the video waits on its poster — never silent — and a tap plays it with sound', async ({ page }) => {
   // iOS Safari's rule: sound only from a tap. Stand-in: refuse unmuted play()
   // unless it is called while a click is being handled.
   await page.addInitScript(() => {
@@ -192,14 +218,14 @@ test('if the browser refuses sound without a tap, the video plays silently and "
   await reloadWriter(page);
   await page.locator(`[data-spread-id="${entryId}"]`).scrollIntoViewIfNeeded();
   const video = inline(page, entryId);
-  await expectPlaying(video);
-  expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(true);
-  await expect(soundOn(page, entryId)).toHaveText('Sound on');
+  await page.waitForTimeout(1_500);
+  await expectPaused(video);
+  expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(false);
+  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__print button`)).toHaveCount(0);
 
-  await soundOn(page, entryId).click();
-  await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(false);
+  await video.click();
   await expectPlaying(video);
-  await expect(soundOn(page, entryId)).toHaveCount(0);
+  expect(await video.evaluate((v: HTMLVideoElement) => v.muted)).toBe(false);
 });
 
 test('with reduced motion nothing plays by itself; Play still works', async ({ page }) => {

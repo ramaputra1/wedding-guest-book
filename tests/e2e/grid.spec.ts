@@ -309,7 +309,7 @@ test.describe('swiping through a spread', () => {
     await expect(live(page)).toHaveCount(0);
   });
 
-  test('on the public album a swipe changes the photo without opening it; a tap still opens it', async ({ page }) => {
+  test('on the public album a swipe changes the photo without opening it; the expand icon opens it', async ({ page }) => {
     const entryId = await seedEntry(page, 3);
     await page.goto('/');
     await page.locator('#album').scrollIntoViewIfNeeded();
@@ -319,7 +319,11 @@ test.describe('swiping through a spread', () => {
     await expect(current(page, entryId)).toHaveText('2');
     await expect(page.locator('dialog.viewer')).toHaveCount(0);
 
-    await page.locator(`[data-spread-id="${entryId}"] button.mount--open`).tap();
+    // A tap on the photo itself does nothing (owner request)…
+    await page.locator(`[data-spread-id="${entryId}"] img.mount__media`).tap();
+    await expect(page.locator('dialog.viewer')).toHaveCount(0);
+    // …only the expand icon opens it.
+    await page.locator(`[data-spread-id="${entryId}"] .mount__expand`).tap();
     await expect(page.locator('dialog.viewer')).toBeVisible();
   });
 });

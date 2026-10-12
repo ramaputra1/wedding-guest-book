@@ -22,6 +22,15 @@ export const onRequestDelete: PagesFunction<Env, 'id', RequestData> = async (con
   if (!(await findMedia(env.DB, mediaId))) return error(404, 'not_found', 'That photo or video is not in the album.');
 
   // Removing an item that is already removed changes nothing and is not an error.
-  await insertRemoval(env.DB, { mediaId, deviceId: session.deviceId, removedAt: Date.now() });
+  try {
+    await insertRemoval(env.DB, { mediaId, deviceId: session.deviceId, removedAt: Date.now() });
+  } catch (failure) {
+    // The code reached this database before its migration did: say so plainly,
+    // rather than a bare 500 the iPad can only call "check the wifi".
+    if (String(failure).includes('no such table: media_removals')) {
+      return error(503, 'migration_missing', "Deleting isn't set up on this database yet. The owner needs to apply migration 0002_media_removals.");
+    }
+    throw failure;
+  }
   return json({ id: mediaId, removed: true });
 };

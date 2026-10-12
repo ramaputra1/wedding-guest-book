@@ -227,7 +227,7 @@ A capture is not "saved" until storage confirms it. The sequence:
 
 ## Removing a photo or video
 
-Owner request after Phase 5. On a writer iPad every saved photo or video on show has **Delete** at its top right. It asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
+Owner request after Phase 5. On a writer iPad every saved photo or video on show has **Delete** just above its top right. It asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
 
 **Nothing is erased.** `DELETE /api/media/{id}` (session required) inserts one row into `media_removals`. The `media` row and its files in R2 stay:
 
@@ -237,7 +237,7 @@ Owner request after Phase 5. On a writer iPad every saved photo or video on show
 
 A deleted item's file URL keeps working for anyone who already has it, because the file is kept. The URLs are long random ids, not guessable.
 
-The album query falls back to showing everything if migration 0002 has not been applied yet. Code deployed before the migration therefore never breaks the album; deleting simply fails until the migration is in.
+The album query falls back to showing everything if migration 0002 has not been applied yet. Code deployed before the migration therefore never breaks the album; deleting fails until the migration is in, and says so: the server answers `503 migration_missing`, and the iPad shows that message rather than "check the wifi".
 
 **Bringing an item back** (owner, from a terminal):
 

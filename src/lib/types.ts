@@ -73,6 +73,7 @@ export type ApiErrorCode =
   | 'payload_too_large'
   | 'unsupported_media_type'
   | 'server_not_configured'
+  | 'migration_missing'
   | 'server_error';
 
 export interface ApiError {

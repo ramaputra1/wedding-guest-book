@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy } from '../config/site';
-import { getAlbum, getSession, getStats, removeMedia } from '../lib/api';
+import { ApiFailure, getAlbum, getSession, getStats, removeMedia } from '../lib/api';
 import { recorderType, type CaptureMode, type Facing } from '../lib/capture/camera';
 import { pickFromNativeCamera, videoContainerOf } from '../lib/capture/fallback';
 import { photoFromFile, photoFromVideo, type CapturedPhoto } from '../lib/capture/photo';
@@ -84,7 +84,8 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   const [removing, setRemoving] = useState<AlbumMedia | null>(null);
   /** Deleted on this iPad: hidden at once, before the album is read again. */
   const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set());
-  const [removeFailed, setRemoveFailed] = useState(false);
+  /** Why the last delete failed, in words for the notice; null when it did not. */
+  const [removeFailed, setRemoveFailed] = useState<string | null>(null);
 
   const [railOpen, setRailOpen] = useState(true);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
@@ -207,20 +208,24 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     const item = removing;
     setRemoving(null);
     if (!item) return;
-    setRemoveFailed(false);
+    setRemoveFailed(null);
     setRemovedIds((current) => new Set(current).add(item.id));
     try {
       await removeMedia(item.id);
       void load(true);
       refreshStats();
-    } catch {
+    } catch (failure) {
       setRemovedIds((current) => {
         const next = new Set(current);
         next.delete(item.id);
         return next;
       });
-      setRemoveFailed(true);
-      setAnnouncement(copy.remove.failed);
+      // Only a request that never arrived is a wifi problem; anything the
+      // server answered is shown as the server said it.
+      const reached = failure instanceof ApiFailure && failure.code !== 'network';
+      const message = reached ? failure.message : copy.remove.failed;
+      setRemoveFailed(message);
+      setAnnouncement(message);
     }
   }
 
@@ -350,6 +355,11 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     void previewVideo.current?.play().catch(() => undefined);
     holdPlayback('pen', false);
   };
+
+  // Full screen, the viewer's copy is the one heard; the one in the mount waits.
+  useEffect(() => {
+    holdPlayback('viewer', viewing !== null);
+  }, [viewing]);
 
   // A video playing in the album while another is recorded would be heard in it.
   useEffect(() => {
@@ -583,7 +593,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   if (queueBytes > WARN_QUEUE_BYTES || uploads.items.length >= WARN_QUEUE_ITEMS || storageShare > WARN_STORAGE_SHARE) {
     notices.push(copy.camera.storageWarning);
   }
-  if (removeFailed) notices.push(copy.remove.failed);
+  if (removeFailed) notices.push(removeFailed);
   if (camera.problem === 'refused') notices.push(copy.camera.cameraRefused);
   if (camera.problem === 'unavailable') notices.push(copy.camera.cameraUnavailable);
 

@@ -241,10 +241,6 @@
   font: inherit;
 }
 
-button.mount--open {
-  cursor: zoom-in;
-}
-
 .mount[data-addable='true'] {
   cursor: pointer;
 }
@@ -292,49 +288,70 @@ button.mount--open {
   cursor: pointer;
 }
 
-/* "Sound on": shown only when the browser started a video silently. On the
-   same leaf plate as the duration badge, in the opposite corner, and a
-   full-size target. (No Play / Pause plate: a tap on the video does that.) */
-.mount__sound {
-  position: absolute;
-  /* Centred on the same line as the duration badge, which is shorter. */
-  inset-block-end: var(--space-1);
-  inset-inline-end: calc(var(--space-5) + var(--space-2));
-  min-inline-size: var(--space-7);
-  min-block-size: var(--space-7);
-  padding-inline: var(--space-3);
-  border: 0;
-  border-radius: var(--radius-mount);
-  background-color: var(--leaf);
-  color: var(--on-leaf);
-  font-family: var(--font-ui);
-  font-size: var(--step--1);
-  line-height: var(--leading-ui);
-  cursor: pointer;
-}
-
-/* "Delete" (writer iPads, owner request): the word, underlined, at the top
-   right of every saved photo or video, on the same leaf plate as the
-   duration badge so it reads over any picture. Not --warn (that means "not
-   saved") and not --brass (state). It asks before anything happens. */
+/* "Delete" (writer iPads, owner request): the word alone, underlined, just
+   above the print's top right — on the leaf, never over the picture, and with
+   no plate behind it. Quiet at rest (--on-leaf-soft, 5.6:1); brighter under
+   the pointer. Not --warn (that means "not saved") and not --brass (state).
+   The target is 44 px tall; the word sits at its foot, beside the print. */
 .mount__delete {
   position: absolute;
-  inset-block-start: var(--space-1);
-  inset-inline-end: calc(var(--space-5) + var(--space-2));
+  z-index: 1;
+  inset-block-end: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
   min-inline-size: var(--space-7);
   min-block-size: var(--space-7);
-  padding-inline: var(--space-3);
+  padding: 0;
+  padding-block-end: var(--space-1);
   border: 0;
-  border-radius: var(--radius-mount);
-  background-color: var(--leaf);
-  color: var(--on-leaf);
+  background: none;
+  color: var(--on-leaf-soft);
   font-family: var(--font-ui);
   font-size: var(--step--1);
   line-height: var(--leading-ui);
+  letter-spacing: 0.02em;
   text-decoration: underline;
   text-decoration-thickness: var(--rule-width);
   text-underline-offset: var(--space-1);
   cursor: pointer;
+  transition: color var(--duration-state) var(--ease);
+}
+
+.mount__delete:hover {
+  color: var(--on-leaf);
+}
+
+/* Expand (public album, owner request): opens the photo or video full
+   screen. Bottom right of the print, on the same --leaf plate as the
+   duration badge opposite it, inside a full 44 px target. A tap anywhere
+   else on a photo does nothing; on a video it plays or pauses. */
+.mount__expand {
+  position: absolute;
+  inset-block-end: var(--space-1);
+  inset-inline-end: calc(var(--space-5) + var(--space-1));
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-7);
+  block-size: var(--space-7);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-leaf);
+  cursor: zoom-in;
+}
+
+.mount__expand svg {
+  box-sizing: content-box;
+  padding: var(--space-1);
+  border-radius: var(--radius-mount);
+  background-color: var(--leaf);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* A video looks like any other print; only this badge says it moves. */

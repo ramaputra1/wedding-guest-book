@@ -109,8 +109,8 @@ export interface RemoveCopy {
 }
 
 export interface ViewerCopy {
-  openPhoto: string;
-  playVideo: string;
+  /** The expand icon at a print's bottom right: "View full screen, Spread 3, 2 items". */
+  expand: string;
   close: string;
 }
 
@@ -151,8 +151,8 @@ export interface AlbumCopy {
   of: string;
   /** "Add a photo or video to Spread 3" — the "+" beneath a mount. */
   addTo: string;
-  /** The control on a video playing in its mount (writer iPads). */
-  playback: { play: string; pause: string; soundOn: string };
+  /** What a tap on a video in its mount will do, for its accessible name. */
+  playback: { play: string; pause: string };
   remove: RemoveCopy;
   video: string;
   seconds: string;
@@ -252,7 +252,7 @@ export const site = {
     showItem: 'Show item',
     of: 'of',
     addTo: 'Add a photo or video to',
-    playback: { play: 'Play', pause: 'Pause', soundOn: 'Sound on' },
+    playback: { play: 'Play', pause: 'Pause' },
     remove: {
       label: 'Delete',
       buttonPhoto: 'Delete this photo',
@@ -330,8 +330,7 @@ export const site = {
       notSaved: "That page didn't save. Tap to try again.",
     },
     viewer: {
-      openPhoto: 'Open photo',
-      playVideo: 'Play video',
+      expand: 'View full screen',
       close: 'Close',
     },
     signIn: {

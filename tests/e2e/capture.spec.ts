@@ -103,8 +103,8 @@ test('a saved video plays from the public album (Chrome)', async ({ page }) => {
   test.skip(!entry, 'needs the 15-second video from the test above');
   await page.goto('/');
   await page.locator('#album').scrollIntoViewIfNeeded();
-  // On the public album the mount opens the full item; this spread's first item is the video.
-  await page.locator(`[data-spread-id="${entry!.id}"] button.mount--open`).click();
+  // On the public album the expand icon opens the full item; this spread's first item is the video.
+  await page.locator(`[data-spread-id="${entry!.id}"] .mount__expand`).click();
   const player = page.locator('dialog.viewer video');
   await expect(player).toBeVisible();
   await expect.poll(() => player.evaluate((v: HTMLVideoElement) => v.currentTime), { timeout: 15_000 }).toBeGreaterThan(0.5);

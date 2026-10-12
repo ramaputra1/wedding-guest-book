@@ -1,6 +1,7 @@
 /**
- * Saved videos play by themselves in their mounts on the writer iPads, with
- * sound, looping (owner request) — under rules that keep that bearable:
+ * Videos in their mounts, with sound, looping (owner requests). On the writer
+ * iPads they play by themselves; on the public album a tap plays them. The
+ * rules that keep that bearable:
  *
  * - **One voice at a time.** Only one video plays; the one that most recently
  *   came into view (or was asked to play) wins, and the rest pause.
@@ -8,10 +9,10 @@
  * - **Held while it would get in the way.** While a video is being recorded
  *   (its sound would end up in the new recording) and while the pen is on a
  *   page (nothing moves near the canvas), every video pauses.
- * - **Reduced motion** turns autoplay off; the Play button still works.
- * - **Sound.** Playback always starts unmuted. If the browser refuses sound
- *   without a tap — iOS Safari may — the video plays muted and its control
- *   offers "Sound on"; one tap there turns it on.
+ * - **Reduced motion** turns autoplay off; a tap still plays.
+ * - **Sound, always (owner request).** A video is never played muted. If the
+ *   browser refuses to start sound without a tap — iOS Safari may — the video
+ *   stays paused on its poster, and a tap on it starts it, with sound.
  *
  * One module for the page, because there is one album island.
  */
@@ -38,13 +39,8 @@ function reducedMotion(): boolean {
 function startWithSound(video: HTMLVideoElement) {
   video.muted = false;
   video.volume = 1;
-  video.play().catch((error: unknown) => {
-    // Refused with sound (no tap yet): play silently, and offer "Sound on".
-    if (error instanceof DOMException && error.name === 'NotAllowedError') {
-      video.muted = true;
-      void video.play().catch(() => undefined);
-    }
-  });
+  // Refused (no tap yet): it stays paused, never silent. A tap plays it.
+  void video.play().catch(() => undefined);
 }
 
 function settle() {
@@ -86,10 +82,13 @@ function observe(): IntersectionObserver {
   return observer;
 }
 
-/** Starts managing a mount's video; returns the function that stops it. */
-export function registerVideo(video: HTMLVideoElement): () => void {
+/**
+ * Starts managing a mount's video; returns the function that stops it.
+ * `autoplay: false` (the public album) waits for a tap.
+ */
+export function registerVideo(video: HTMLVideoElement, { autoplay = true }: { autoplay?: boolean } = {}): () => void {
   // Reduced motion: nothing starts by itself, but the guest can still play it.
-  const player: Player = { video, visible: false, wantedAt: 0, pausedByGuest: reducedMotion() };
+  const player: Player = { video, visible: false, wantedAt: 0, pausedByGuest: !autoplay || reducedMotion() };
   players.add(player);
   observe().observe(video);
   return () => {
@@ -100,16 +99,10 @@ export function registerVideo(video: HTMLVideoElement): () => void {
   };
 }
 
-/** The guest's own Play / Pause / Sound on, from a tap: always honoured. */
+/** The guest's own play or pause, from a tap: always honoured. */
 export function toggleByGuest(video: HTMLVideoElement) {
   const player = playerOf(video);
   if (!player) return;
-  if (!video.paused && video.muted) {
-    // Inside the tap, so the browser allows sound now.
-    video.muted = false;
-    video.volume = 1;
-    return;
-  }
   if (!video.paused) {
     player.pausedByGuest = true;
     video.pause();

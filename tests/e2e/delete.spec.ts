@@ -1,7 +1,7 @@
 /**
  * Deleting a photo or video on a writer iPad (owner request after Phase 5):
- * every saved item on show carries the word "Delete", underlined, at its top
- * right; it asks "Delete this photo?" — Yes or No; Yes takes it out of the
+ * every saved item on show carries the word "Delete", underlined, just above
+ * its top right — on the leaf, never over the picture; it asks "Delete this photo?" — Yes or No; Yes takes it out of the
  * album. Nothing is erased on the server (tests/removals.spec.ts).
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -35,11 +35,12 @@ test('"Delete" sits at the top right of every saved item; No keeps it, Yes delet
   await expect(del(page, entryId)).toHaveText('Delete');
   await expect(del(page, entryId)).toHaveAccessibleName('Delete this photo');
   await expect(del(page, entryId)).toHaveCSS('text-decoration-line', 'underline');
-  // Top right of the print, and a full-size target.
+  // Above the print's top right — not over the picture — with no plate behind it, and a full-size target.
   const print = (await spread(page, entryId).locator('.mount__frame').boundingBox())!;
   const button = (await del(page, entryId).boundingBox())!;
-  expect(button.x + button.width).toBeGreaterThan(print.x + print.width * 0.75);
-  expect(button.y).toBeLessThan(print.y + print.height * 0.25);
+  expect(button.y + button.height).toBeLessThanOrEqual(print.y);
+  expect(Math.abs(button.x + button.width - (print.x + print.width))).toBeLessThan(2);
+  await expect(del(page, entryId)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   expect(button.width).toBeGreaterThanOrEqual(44);
   expect(button.height).toBeGreaterThanOrEqual(44);
 
@@ -111,6 +112,22 @@ test('if the delete does not reach the server, the photo comes back and a notice
   await expect(page.locator('.writer__notices')).toContainText("That didn't delete. Check the wifi and try again.");
   await expect(numbers(page, entryId)).toHaveCount(2);
   expect(await mediaCount(page, entryId)).toBe(2);
+});
+
+test('when the server answers with a problem, the notice says what the server said — not "check the wifi"', async ({ page }) => {
+  const entryId = await seedEntry(page, 1);
+  await reloadWriter(page);
+  const message = "Deleting isn't set up on this database yet. The owner needs to apply migration 0002_media_removals.";
+  await page.route('**/api/media/*', (route) =>
+    route.request().method() === 'DELETE'
+      ? route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'migration_missing', message }) })
+      : route.continue(),
+  );
+  await del(page, entryId).click();
+  await dialog(page).locator('.confirm__yes').click();
+  await expect(page.locator('.writer__notices')).toContainText(message);
+  await expect(page.locator('.writer__notices')).not.toContainText('wifi');
+  await expect(numbers(page, entryId)).toHaveCount(1);
 });
 
 test('the public album: no "Delete", and a spread with everything deleted is not shown', async ({ page }) => {

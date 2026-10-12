@@ -310,3 +310,49 @@ npx wrangler d1 migrations apply wedding-guestbook --remote
 **Owner action (from Round 5, still needed):** apply `0002_media_removals.sql` to the test database before merging into `dev-acceptance`.
 
 **Verdict:** **READY TO MERGE.**
+
+---
+
+# Round 7 — 2026-10-12
+
+| Request | Result | Evidence |
+|---|---|---|
+| "Delete" looks better and does not overlap the picture | PASS | Moved from a dark plate on the print to the word alone, underlined, just above the print's top right, on the leaf with no background (`--on-leaf-soft`, brighter on hover). e2e: its box ends above the print's top edge, its right edge lines up with the print's, its background is transparent, and it is ≥ 44 × 44. |
+| DELETE fails with "check the wifi" while online | Cause found; message fixed; **owner action needed** | See below. |
+| Homepage: expand icon at bottom right; a tap on a video plays / pauses; a tap on a photo does nothing | PASS | The public mount is no longer one big "open" button. A saved video plays in place on a tap, with sound and looping, and stops on the next tap. The expand icon (bottom right, `--leaf` plate) is the only way to open the viewer. e2e: a video waits for a tap; tap → plays unmuted, loops past its 3 s end; tap → pauses; the icon sits in the bottom-right quarter and opens the looping viewer while the mount's copy pauses; tapping a photo opens nothing. |
+| No "Sound on" button; videos always have sound unless paused | PASS | The muted fallback is gone. A video is never played muted. If a browser refuses sound before a tap, the video stays paused on its poster and a tap starts it with sound. e2e simulates that refusal: paused, not muted, no button; one tap plays it unmuted. |
+
+**Why DELETE failed.** The code was tested against a database that has migration `0002_media_removals`. The test database on Cloudflare almost certainly does not have it yet: Round 5 asked for it to be applied before merging. Without the table:
+- the album still loads, because of the deliberate fallback;
+- each delete hit a server error, which the iPad showed as "check the wifi" because it treated every failure that way.
+
+Two fixes:
+- **Server:** a missing table now answers `503 migration_missing`, "Deleting isn't set up on this database yet. The owner needs to apply migration 0002_media_removals."
+- **iPad:** shows the server's own message whenever the server answered, and the wifi message only when the request never arrived. e2e covers both.
+
+The real fix is the owner's: apply the migration (below).
+
+**Files:**
+- `functions/api/media/[id].ts` (`migration_missing`)
+- `src/lib/types.ts` (error code)
+- `GuestBook.tsx` (honest notice; videos hold while the viewer is open)
+- `album/playback.ts` (never muted; `autoplay` option)
+- `album/MediaMount.tsx` (inline video in both modes; expand icon; "Delete" above the print; no "Sound on")
+- `config/site.ts` (`viewer.expand`; `playback.soundOn`, `viewer.openPhoto` and `viewer.playVideo` removed)
+- `components.css` (`.mount__delete` restyled; `.mount__expand` new; `.mount__sound` and `button.mount--open` removed)
+- tests: `delete`, `playback`, `grid`, `capture` e2e specs
+- docs: `DESIGN.md`, `ARCHITECTURE.md`, `TESTING.md`
+
+**Tests:** `npm run typecheck` clean · `npm test` 157 passed · `npm run test:auth` 90 passed · `npm run test:e2e` 50 passed.
+
+**Owner action (required for Delete to work on `dev-acceptance`):**
+
+```bash
+npx wrangler d1 migrations apply wedding-guestbook-test --remote --env preview
+```
+
+**Needs a real device:**
+- On the iPad, check whether a video starts with sound by itself. If Safari refuses, it now waits paused until tapped, instead of playing silently.
+- On a phone, on the homepage: tap a video to play or pause it, and tap the expand icon to open it full screen.
+
+**Verdict:** **READY TO MERGE** (Delete on `dev-acceptance` needs the migration above).

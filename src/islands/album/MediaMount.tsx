@@ -36,7 +36,7 @@ interface Props {
   onLeave: () => void;
   /** Write mode: room for another item (a spread holds at most `maxItems`). */
   canAdd: boolean;
-  /** Write mode: the trash button was pressed on a saved item. */
+  /** Write mode: "Delete" was pressed on a saved item. */
   onRemove?: (item: AlbumMedia) => void;
   live?: LivePreview;
   /** A capture in this mount was just confirmed saved: the corners flash brass. */
@@ -66,35 +66,34 @@ function Duration({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
   );
 }
 
-type Playback = 'paused' | 'playing' | 'muted';
+type Playback = 'paused' | 'playing';
 
 /**
- * A saved video on a writer iPad: it plays in its mount by itself, with
- * sound, looping, one at a time (playback.ts). There is no Play / Pause
- * button on it (owner request): a tap on the video plays or pauses it, and
- * so do Enter and Space when it has keyboard focus — audio that starts on its
- * own must stay stoppable (WCAG 1.4.2). The one plate it may show is "Sound
- * on", only when the browser started it silently: without it nobody would
- * know there is sound to turn on.
+ * A saved video in its mount, looping, always with sound (owner requests):
+ * on the writer iPads it plays by itself, on the public album a tap plays it
+ * (playback.ts keeps it to one at a time). There is no Play / Pause plate: a
+ * tap on the video plays or pauses it, and so do Enter and Space when it has
+ * keyboard focus — sound that starts on its own must stay stoppable
+ * (WCAG 1.4.2).
  */
-function InlineVideo({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
+function InlineVideo({ item, autoplay, copy }: { item: AlbumMedia; autoplay: boolean; copy: AlbumCopy }) {
   const video = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<Playback>('paused');
   useEffect(() => {
     const element = video.current;
     if (!element) return;
-    const sync = () => setState(element.paused ? 'paused' : element.muted ? 'muted' : 'playing');
-    const events = ['play', 'pause', 'volumechange'] as const;
+    const sync = () => setState(element.paused ? 'paused' : 'playing');
+    const events = ['play', 'pause'] as const;
     for (const name of events) element.addEventListener(name, sync);
-    const unregister = registerVideo(element);
+    const unregister = registerVideo(element, { autoplay });
     return () => {
       for (const name of events) element.removeEventListener(name, sync);
       unregister();
     };
-  }, [item.fullSrc]);
+  }, [item.fullSrc, autoplay]);
 
   const toggle = () => video.current && toggleByGuest(video.current);
-  const action = state === 'playing' ? copy.playback.pause : state === 'muted' ? copy.playback.soundOn : copy.playback.play;
+  const action = state === 'playing' ? copy.playback.pause : copy.playback.play;
   return (
     <span class="mount__print">
       <video
@@ -117,11 +116,6 @@ function InlineVideo({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
         }}
       />
       <Duration item={item} copy={copy} />
-      {state === 'muted' && (
-        <button type="button" class="mount__sound" onClick={toggle}>
-          {copy.playback.soundOn}
-        </button>
-      )}
     </span>
   );
 }
@@ -206,7 +200,8 @@ function SaveStatus({ media, copy, onRetry, onDiscard }: { media: AlbumMedia[]; 
  * Several items become a carousel with numbers beneath. In write mode a "+"
  * after the numbers is the only way to aim the camera here; choosing a
  * number shows that item and turns the camera away again. On the public
- * album the mount opens the full photo or video.
+ * album a tap on a video plays or pauses it, and the expand icon at the
+ * bottom right opens the photo or video full screen (owner request).
  */
 export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, canAdd, onRemove, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const [index, setIndex] = useState(0);
@@ -252,30 +247,32 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
   // still on its way has "Saving…" instead, and the live camera has neither.
   const removable = mode === 'write' && !showLive && current !== undefined && !current.pending && onRemove !== undefined;
 
+  const expandable = !writing && current !== undefined && !current.pending && onOpen !== undefined;
+
   const frame = (
     <span class="mount__frame">
       {live && <Live live={live} behind={!showLive} />}
       {!showLive &&
         current &&
-        // Writer iPads play a saved video in place; still on its way, it shows its poster.
-        (mode === 'write' && current.kind === 'video' && !current.pending && current.fullSrc ? (
-          <InlineVideo key={current.id} item={current} copy={copy} />
+        // A saved video plays in place; one still on its way shows its poster.
+        (current.kind === 'video' && !current.pending && current.fullSrc ? (
+          <InlineVideo key={current.id} item={current} autoplay={writing} copy={copy} />
         ) : (
           <Print key={current.id} item={current} copy={copy} />
         ))}
-      {removable && (
+      {expandable && (
         <button
           type="button"
-          class="mount__delete"
-          // The name holds the visible word (WCAG 2.5.3) and says what goes.
-          aria-label={current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}
+          class="mount__expand"
+          aria-label={`${copy.viewer.expand}, ${mountName}`}
           onClick={(event) => {
-            // Not a tap on the video beneath, which would play or pause it.
             event.stopPropagation();
-            onRemove(current);
+            onOpen(current);
           }}
         >
-          {copy.remove.label}
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+          </svg>
         </button>
       )}
       <PhotoCorners />
@@ -301,13 +298,6 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
         {frame}
       </div>
     );
-  } else if (current && !current.pending && onOpen) {
-    const action = current.kind === 'video' ? copy.viewer.playVideo : copy.viewer.openPhoto;
-    mount = (
-      <button type="button" class="mount mount--open" aria-label={`${action}, ${mountName}`} onClick={() => onOpen(current)}>
-        {frame}
-      </button>
-    );
   } else {
     mount = <div class="mount">{frame}</div>;
   }
@@ -315,6 +305,18 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
   return (
     <>
       <div class="mount-wrap" {...swipe}>
+        {removable && (
+          // Above the print's top right, on the leaf — never over the picture.
+          <button
+            type="button"
+            class="mount__delete"
+            // The name holds the visible word (WCAG 2.5.3) and says what goes.
+            aria-label={current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}
+            onClick={() => onRemove(current)}
+          >
+            {copy.remove.label}
+          </button>
+        )}
         {mount}
         <SaveStatus media={media} copy={copy} onRetry={onRetry} onDiscard={onDiscard} />
       </div>
