@@ -5,11 +5,15 @@ import { recorderType, type CaptureMode, type Facing } from '../lib/capture/came
 import { pickFromNativeCamera, videoContainerOf } from '../lib/capture/fallback';
 import { photoFromFile, photoFromVideo, type CapturedPhoto } from '../lib/capture/photo';
 import { startRecording, videoStills, type RecordingControl } from '../lib/capture/video';
+import { readDraft, removeDraft, writeDraft } from '../lib/canvas/drafts';
+import { EXPORT_HEIGHT, EXPORT_WIDTH, exportPng, exportStrokes } from '../lib/canvas/export';
+import type { Stroke } from '../lib/canvas/strokes';
 import { newId } from '../lib/ids';
 import type { QueueItem } from '../lib/queue/store';
 import type { AlbumEntry, AlbumMedia, AlbumMode, ApiStats, DeviceId, VideoContainer } from '../lib/types';
 import { Album, NEW_SPREAD_ID } from './album/Album';
 import { MediaViewer } from './album/MediaViewer';
+import { NEW_PAGE_KEY } from './album/WritingCanvas';
 import { CameraRail } from './CameraRail';
 import { useCamera } from './hooks/useCamera';
 import { useUploader } from './hooks/useUploader';
@@ -134,6 +138,12 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   const uploads = useUploader({
     enabled: writing,
     onSaved: (item) => {
+      // The server has this version now; the iPad's copy can go — unless a
+      // later save or new strokes have replaced it since.
+      if (item.kind === 'canvas') {
+        const draft = readDraft(item.entryId);
+        if (draft && !draft.unsaved && draft.updatedAt <= item.createdAt) removeDraft(item.entryId);
+      }
       setAnnouncement(copy.save.saved);
       setJustSaved((current) => new Set(current).add(item.entryId));
       setTimeout(
@@ -157,7 +167,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   useEffect(() => {
     setThumbUrls((previous) => {
       const next = new Map<string, string>();
-      for (const item of uploads.items) next.set(item.mediaId, previous.get(item.mediaId) ?? URL.createObjectURL(item.thumb));
+      for (const item of uploads.items) next.set(item.mediaId, previous.get(item.mediaId) ?? URL.createObjectURL(item.thumb ?? item.original));
       for (const [id, url] of previous) if (!next.has(id)) URL.revokeObjectURL(url);
       return next;
     });
@@ -165,7 +175,11 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
 
   const album = useMemo(() => {
     if (mode !== 'write' || !deviceId || entries === null) return entries;
-    return mergeAlbum(entries, uploads.items, thumbUrls, deviceId, { photoAlt: copy.photoAlt, videoAlt: copy.videoAlt });
+    return mergeAlbum(entries, uploads.items, thumbUrls, deviceId, {
+      photoAlt: copy.photoAlt,
+      videoAlt: copy.videoAlt,
+      pageAlt: copy.handwrittenPage,
+    });
   }, [mode, deviceId, entries, uploads.items, thumbUrls, copy]);
 
   const destinationId =
@@ -210,6 +224,47 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     clearTimeout(reviewTimer.current);
     reviewTimer.current = setTimeout(() => setReviewing(false), REVIEW_MS);
   }
+
+  /**
+   * A page version goes through the same queue as a photo: PNG and stroke
+   * JSON together, as a new version — never over the last one. The iPad keeps
+   * the strokes as a draft until the server confirms, so the next edit builds
+   * on this version even while it is still on its way.
+   */
+  async function savePage(strokes: Stroke[]) {
+    if (!deviceId) return;
+    const isNew = destinationId === NEW_SPREAD_ID;
+    const entryId = isNew ? newId(deviceId) : destinationId;
+    const savedOnServer = entries?.some((entry) => entry.id === entryId) ?? false;
+    const createdAt = Date.now();
+    const item: QueueItem = {
+      mediaId: newId(deviceId),
+      entryId,
+      createEntry: !savedOnServer,
+      kind: 'canvas',
+      original: await exportPng(strokes),
+      strokes: exportStrokes(strokes),
+      width: EXPORT_WIDTH,
+      height: EXPORT_HEIGHT,
+      createdAt,
+      stored: [],
+      attempts: 0,
+      nextAttemptAt: 0,
+      state: 'saving',
+    };
+    await uploads.enqueue(item);
+    writeDraft(entryId, { strokes, unsaved: false, updatedAt: createdAt });
+    if (isNew) {
+      removeDraft(NEW_PAGE_KEY);
+      setSelectedId(entryId);
+    }
+    setAnnouncement(copy.save.saving);
+  }
+
+  // Nothing moves beside the page while the pen is down (DESIGN.md, Motion):
+  // the viewfinder holds its frame until the pen lifts.
+  const onPenDown = () => previewVideo.current?.pause();
+  const onPenUp = () => void previewVideo.current?.play().catch(() => undefined);
 
   // The iPad's own camera app takes over only when the live camera cannot
   // work at all — never merely because it is still starting.
@@ -340,7 +395,12 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   }
 
   const onDiscard = (mediaId: string) => {
-    if (window.confirm(copy.save.confirmRemove)) void uploads.discard(mediaId);
+    if (!window.confirm(copy.save.confirmRemove)) return;
+    // A page version given up on: its strokes are still on the iPad, now unsaved again.
+    const item = uploads.items.find((queued) => queued.mediaId === mediaId);
+    const draft = item?.kind === 'canvas' ? readDraft(item.entryId) : null;
+    if (item && draft) writeDraft(item.entryId, { ...draft, unsaved: true });
+    void uploads.discard(mediaId);
   };
 
   const onSignedIn = () => {
@@ -380,6 +440,18 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
       selectedId={selectedId}
       onSelect={toggleSelection}
       live={livePreview}
+      editor={
+        writing
+          ? {
+              spreadId: destinationId,
+              entryId: destinationId === NEW_SPREAD_ID ? null : destinationId,
+              hasSavedVersion: entries?.some((entry) => entry.id === destinationId && entry.page !== null) ?? false,
+              onSave: savePage,
+              onPenDown,
+              onPenUp,
+            }
+          : undefined
+      }
       justSaved={justSaved}
       onOpen={mode === 'view' ? setViewing : undefined}
       onRetry={uploads.retry}
@@ -410,7 +482,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
 
   const destinationIndex = (album ?? []).findIndex((entry) => entry.id === destinationId);
   const destination = destinationId === NEW_SPREAD_ID || destinationIndex < 0 ? copy.newSpread : `${copy.spread} ${destinationIndex + 1}`;
-  const queueBytes = uploads.items.reduce((sum, item) => sum + item.original.size + item.thumb.size + (item.poster?.size ?? 0), 0);
+  const queueBytes = uploads.items.reduce((sum, item) => sum + item.original.size + (item.thumb?.size ?? 0) + (item.poster?.size ?? 0) + (item.strokes?.length ?? 0), 0);
   const notices: string[] = [];
   if (queueBytes > WARN_QUEUE_BYTES || uploads.items.length >= WARN_QUEUE_ITEMS || storageShare > WARN_STORAGE_SHARE) {
     notices.push(copy.camera.storageWarning);

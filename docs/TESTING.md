@@ -86,6 +86,8 @@ a direct POST from the page context is rejected
 
 Viewports: iPad landscape (1180×820), iPad portrait (820×1180), phone (390×844), desktop (1440×900).
 
+**The writing page** (`tests/e2e/canvas.spec.ts`). Pen and touch input are sent through Chrome's DevTools protocol, which produces real `PointerEvent`s with `pointerType` `pen` (with pressure) and `touch`. Covered: strokes saved as new versions with the earlier one kept; Clear after a save; the PNG is 2000 × 1500; the saved stroke JSON redraws the same pixels as the PNG; undo through a resize; unsaved strokes through a reload; offline save; no scroll while a finger writes; palm rejection logic; and coalesced events — stubbed to return three samples per move, to prove every sample becomes a point. None of this proves how the Pencil *feels*: that is §6.
+
 ---
 
 ## 5. Accessibility

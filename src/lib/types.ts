@@ -38,6 +38,8 @@ export interface AlbumMedia {
 export interface AlbumPage {
   src: string;
   alt: string;
+  /** Present only while this version is still on its way to storage. */
+  pending?: { state: SaveState; code?: string; message?: string; permanent?: boolean; versionId: string };
 }
 
 /** One spread: media on the left, the handwriting that belongs to it on the right. */

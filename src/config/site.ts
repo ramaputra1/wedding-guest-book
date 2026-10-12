@@ -63,6 +63,31 @@ export interface SaveCopy {
   confirmRemove: string;
 }
 
+/** Words around the writing page and its tools. */
+export interface PageCopy {
+  /** "Writing page, Spread 3" — prefix for the canvas's text alternative. */
+  label: string;
+  strokes: string;
+  stroke: string;
+  hint: string;
+  tools: string;
+  pen: string;
+  pencil: string;
+  eraser: string;
+  inks: string;
+  inkBlueBlack: string;
+  inkSepia: string;
+  inkOxblood: string;
+  undo: string;
+  clear: string;
+  confirmClear: string;
+  save: string;
+  saved: string;
+  loading: string;
+  unavailable: string;
+  notSaved: string;
+}
+
 /** Words in the full-size viewer on the public album. */
 export interface ViewerCopy {
   openPhoto: string;
@@ -113,6 +138,7 @@ export interface AlbumCopy {
   handwrittenPage: string;
   camera: CameraCopy;
   save: SaveCopy;
+  page: PageCopy;
   viewer: ViewerCopy;
   signIn: SignInCopy;
 }
@@ -239,6 +265,28 @@ export const site = {
       signInAgain: 'Sign in again to finish saving.',
       remove: 'Remove',
       confirmRemove: 'Remove this from the iPad? It was never saved and cannot be recovered.',
+    },
+    page: {
+      label: 'Writing page',
+      strokes: 'strokes',
+      stroke: 'stroke',
+      hint: 'Write with Apple Pencil or a finger.',
+      tools: 'Writing tools',
+      pen: 'Pen',
+      pencil: 'Pencil',
+      eraser: 'Eraser',
+      inks: 'Ink',
+      inkBlueBlack: 'Blue-black ink',
+      inkSepia: 'Sepia ink',
+      inkOxblood: 'Oxblood ink',
+      undo: 'Undo',
+      clear: 'Clear',
+      confirmClear: 'Clear the page? Anything already saved stays safe in the album.',
+      save: 'Save',
+      saved: 'Saved',
+      loading: 'Opening the page…',
+      unavailable: "This page's saved writing could not be loaded, so it cannot be added to right now. Check the wifi and select it again.",
+      notSaved: "That page didn't save. Tap to try again.",
     },
     viewer: {
       openPhoto: 'Open photo',

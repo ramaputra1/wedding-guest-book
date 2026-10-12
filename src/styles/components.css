@@ -504,6 +504,152 @@ button.mount--open {
 }
 
 /* ---------------------------------------------------------------------------
+ * Writing on the page — the writer's destination spread (DESIGN.md, Writing page)
+ * ------------------------------------------------------------------------- */
+
+.writing-desk {
+  display: grid;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
+
+/* Without touch-action: none the page scrolls under the pen — the most common
+   way a stylus page breaks. The callout and selection rules stop iOS's
+   long-press magnifier and text selection from interrupting a slow stroke. */
+.writing-page--live,
+.writing-page--live canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.writing-page__pen {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  cursor: crosshair;
+}
+
+.writing-page__note {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: var(--space-5);
+  color: var(--ink-soft);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  text-align: center;
+}
+
+.writing-page__note--problem {
+  color: var(--ink);
+}
+
+/* One quiet row below the paper, never on it. It wraps rather than scroll
+   sideways on a narrow screen. */
+.writing-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+}
+
+.writing-tools__set {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.writing-tool {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-button);
+  background: none;
+  color: var(--on-leaf);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The chosen tool: brighter, heavier and underlined in brass, as the rail's
+   choices are — never colour alone. */
+.writing-tool[aria-pressed='false'] {
+  color: var(--on-leaf-soft);
+}
+
+.writing-tool[aria-pressed='true'] {
+  font-weight: 600;
+}
+
+.writing-tool[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
+  background-color: var(--brass);
+}
+
+.writing-tool:disabled {
+  color: var(--on-leaf-soft);
+  cursor: default;
+}
+
+/* Save is the one action that matters: it carries a hairline edge until the
+   page is saved, then rests as plain "Saved". */
+.writing-tool--save:enabled {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  font-weight: 600;
+}
+
+/* An ink: a full-size touch target around a small drawn well of ink on a
+   paper ring — the inks are too dark to see against the leaf on their own. */
+.ink-swatch {
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-7);
+  block-size: var(--space-7);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.ink-swatch::before {
+  content: '';
+  inline-size: var(--space-5);
+  block-size: var(--space-5);
+  box-sizing: border-box;
+  border: var(--space-1) solid var(--writing-paper);
+  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
+  border-radius: 50%;
+  background-color: var(--swatch);
+}
+
+.ink-swatch--ink { --swatch: var(--ink); }
+.ink-swatch--sepia { --swatch: var(--ink-sepia); }
+.ink-swatch--oxblood { --swatch: var(--ink-oxblood); }
+
+/* The chosen ink: a brass ring — a shape, not a colour change of the ink. */
+.ink-swatch[aria-pressed='true']::before {
+  outline: var(--focus-width) solid var(--brass);
+  outline-offset: var(--focus-width);
+}
+
+/* ---------------------------------------------------------------------------
  * Sign-in — the passphrase prompt on /ipad1 and /ipad2
  * ------------------------------------------------------------------------- */
 
