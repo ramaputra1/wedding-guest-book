@@ -39,3 +39,82 @@ export interface AlbumEntry {
 }
 
 export type AlbumMode = 'view' | 'write';
+
+// ---------------------------------------------------------------------------
+// The HTTP API (functions/api). Shapes only; see docs/ARCHITECTURE.md, API.
+// ---------------------------------------------------------------------------
+
+export type ApiErrorCode =
+  | 'bad_request'
+  | 'unauthorized'
+  | 'wrong_passphrase'
+  | 'cross_origin'
+  | 'not_found'
+  | 'entry_not_found'
+  | 'already_saved'
+  | 'upload_incomplete'
+  | 'id_wrong_device'
+  | 'conflict'
+  | 'length_required'
+  | 'payload_too_large'
+  | 'unsupported_media_type'
+  | 'server_not_configured'
+  | 'server_error';
+
+export interface ApiError {
+  code: ApiErrorCode;
+  message: string;
+}
+
+export interface ApiSession {
+  deviceId: DeviceId;
+  /** Epoch ms. */
+  expiresAt: number;
+}
+
+export interface ApiMedia {
+  id: string;
+  kind: MediaKind;
+  /** Same-origin URLs under /api/files/. */
+  url: string;
+  thumbUrl: string;
+  posterUrl: string | null;
+  width: number | null;
+  height: number | null;
+  durationMs: number | null;
+  /** Every stored file of this item together: original, thumbnail, poster. */
+  bytes: number;
+  createdAt: number;
+}
+
+export interface ApiCanvas {
+  id: string;
+  version: number;
+  url: string;
+  createdAt: number;
+}
+
+export interface ApiEntry {
+  id: string;
+  deviceId: DeviceId;
+  title: string | null;
+  note: string | null;
+  createdAt: number;
+  media: ApiMedia[];
+  /** The latest version only. */
+  canvas: ApiCanvas | null;
+}
+
+export interface ApiEntries {
+  entries: ApiEntry[];
+}
+
+export interface ApiStats {
+  entries: number;
+  media: number;
+  canvasVersions: number;
+  /** Media plus canvas PNGs, as stored in R2. */
+  bytesUsed: number;
+  /** R2's free storage allowance; the gauge measures bytesUsed against it. */
+  bytesAllowance: number;
+}

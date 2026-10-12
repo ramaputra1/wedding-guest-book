@@ -94,20 +94,33 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │           └── export.ts         # 2x DPR PNG + stroke JSON
 │
 ├── functions/                    # Cloudflare Pages Functions
-│   ├── _middleware.ts            # session verification on all mutations
+│   ├── tsconfig.json             # Workers types, no DOM
+│   ├── worker-runtime.d.ts       # generated: npx wrangler types functions/worker-runtime.d.ts --include-env=false
 │   └── api/
+│       ├── _middleware.ts        # deny by default: session on everything but 3 public routes
 │       ├── auth/
 │       │   ├── login.ts
-│       │   └── logout.ts
+│       │   ├── logout.ts
+│       │   └── session.ts
 │       ├── entries.ts
-│       ├── media.ts
-│       ├── canvas.ts
+│       ├── media.ts              # commit
+│       ├── media/[id]/[part].ts  # stream one file to R2
+│       ├── canvas.ts             # commit
+│       ├── canvas/[id].ts        # stream the PNG to R2
+│       ├── files/[[key]].ts      # public file serving, byte ranges
 │       └── stats.ts
 │
 ├── lib-server/                   # shared by Functions only — never bundled client-side
-│   ├── session.ts                # HMAC sign + verify, constant-time compare
-│   ├── db.ts                     # D1 queries
-│   └── r2.ts                     # R2 put/get helpers
+│   ├── env.ts                    # Env bindings + limits
+│   ├── session.ts                # HMAC sign + verify (constant-time via subtle.verify)
+│   ├── passphrase.ts             # PBKDF2 hash + constant-time verify
+│   ├── bytes.ts                  # base64url, timingSafeEqual
+│   ├── guard.ts                  # the handler-side session check
+│   ├── http.ts                   # typed JSON responses and errors
+│   ├── ids.ts                    # {device}-{ULID} validation, ULID time
+│   ├── files.ts                  # R2 keys, size ceilings, file signatures
+│   ├── upload.ts                 # stream to R2, then verify the bytes
+│   └── db.ts                     # D1 queries — INSERT only
 │
 ├── migrations/
 │   └── 0001_init.sql
@@ -118,8 +131,12 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   └── export-archive.ts         # D1 + R2 → archive repo
 │
 ├── tests/
+│   ├── setup/                    # starts wrangler with throwaway secrets + a fresh DB
+│   ├── helpers.ts
 │   ├── auth.spec.ts              # authorization — the real security test
 │   ├── concurrency.spec.ts       # two devices writing simultaneously
+│   ├── uploads.spec.ts           # server-side upload validation
+│   ├── session.spec.ts           # session + passphrase unit tests
 │   ├── upload-failure.spec.ts    # network death mid-upload
 │   └── e2e/                      # Playwright journeys
 │

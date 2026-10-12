@@ -5,10 +5,6 @@ import Hero from '../components/Hero.astro';
 import CoverLift from '../components/CoverLift.astro';
 import GuestBook from '../islands/GuestBook';
 import { site } from '../config/site';
-import { getPlaceholderAlbum } from '../lib/placeholder-album';
-
-// Phase 3 replaces the placeholder with entries fetched from /api/entries.
-const entries = await getPlaceholderAlbum();
 ---
 
 <Base>
@@ -16,7 +12,7 @@ const entries = await getPlaceholderAlbum();
   <Hero />
   <main class="album" id="album" data-lift-target>
     {/* client:visible: the cover loads with no island JavaScript; the album
-        hydrates only once the reader scrolls it into view. */}
-    <GuestBook client:visible mode="view" entries={entries} intro={site.intro} copy={site.album} />
+        hydrates and fetches /api/entries only once scrolled into view. */}
+    <GuestBook client:visible mode="view" intro={site.intro} copy={site.album} />
   </main>
 </Base>

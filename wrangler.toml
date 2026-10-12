@@ -1,26 +1,55 @@
 # Cloudflare Pages configuration. `npm run preview` runs `wrangler pages dev`,
 # which serves dist/ and the functions/ directory together.
 #
-# Once Pages sees this file it treats it as the source of truth for bindings;
-# the dashboard's binding settings become read-only. See SETUP-CLOUDFLARE.md.
+# Once Pages sees this file it treats it as the source of truth for bindings
+# and plain variables. This file is public: secrets never go here.
+#
+# Two environments:
+#   top level      → production (`main`) and local development
+#   [env.preview]  → every other branch, including dev-acceptance, which uses
+#                    its own test database and bucket so test entries never
+#                    reach the real album (docs/DECISIONS.md, D14)
 
 name = "wedding-guest-book"
 compatibility_date = "2026-09-01"
 pages_build_output_dir = "./dist"
 
-# Metadata. The database is created in Phase 3 (docs/SETUP-CLOUDFLARE.md §3);
-# replace this placeholder id with the real one then. Locally, wrangler keeps a
-# SQLite file under .wrangler/ keyed by this id, so the placeholder works for dev.
+# --- Production ---------------------------------------------------------------
+
+# A database id is not a secret: without the account's credentials it grants nothing.
 [[d1_databases]]
 binding = "DB"
 database_name = "wedding-guestbook"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "a70a88a2-1ef1-4b0c-8c93-998379c5c0b9"
 migrations_dir = "migrations"
 
-# Media. The bucket is created in Phase 3 (docs/SETUP-CLOUDFLARE.md §4).
 [[r2_buckets]]
 binding = "MEDIA"
 bucket_name = "wedding-media"
 
-# Secrets (WRITER_PASSPHRASE_HASH, SESSION_SIGNING_KEY) never go in this file.
-# They are encrypted variables in the Cloudflare dashboard, and in .dev.vars locally.
+# Plain, non-secret settings. The two secrets — WRITER_PASSPHRASE_HASH and
+# SESSION_SIGNING_KEY — are Encrypted variables in the Cloudflare dashboard.
+[vars]
+SESSION_TTL_DAYS = "180"
+MAX_VIDEO_DURATION_MS = "15000"
+MAX_VIDEO_BYTES = "15000000"
+MAX_PHOTO_BYTES = "8000000"
+
+# --- Preview (every non-production branch) -----------------------------------
+# Bindings and vars are not inherited between environments, so all are repeated.
+
+[[env.preview.d1_databases]]
+binding = "DB"
+database_name = "wedding-guestbook-test"
+database_id = "da9e0f56-ac74-4cde-83e0-651f2e399e3a"
+migrations_dir = "migrations"
+
+[[env.preview.r2_buckets]]
+binding = "MEDIA"
+bucket_name = "wedding-media-test"
+
+[env.preview.vars]
+SESSION_TTL_DAYS = "180"
+MAX_VIDEO_DURATION_MS = "15000"
+MAX_VIDEO_BYTES = "15000000"
+MAX_PHOTO_BYTES = "8000000"

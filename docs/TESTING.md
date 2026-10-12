@@ -137,6 +137,8 @@ Also confirmed: **`viewer.html` opens from `file://`** with no server, no intern
 
 ## Running tests
 
+`npm test` starts the real Pages Functions under `wrangler pages dev` on a free port, against a fresh local D1 + R2 in a temporary folder, with a signing key and passphrase generated for that run and passed as bindings. It never reads `.dev.vars` and never touches Cloudflare. Requests go over HTTP exactly as an iPad's would; nothing is mocked.
+
 ```bash
 npm test                 # unit + integration (vitest)
 npm run test:e2e         # Playwright journeys

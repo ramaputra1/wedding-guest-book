@@ -169,7 +169,7 @@ The interface, with hard-coded placeholder data. This is the main design review 
 - Shutter progress ring depleting over 15s
 - `<input capture>` fallback when `getUserMedia` or `MediaRecorder` is unavailable
 - IndexedDB queue: write blob first, upload, retry with backoff, release only on confirmation
-- Chunked resumable upload for video
+- Upload through the Phase 3 API: `PUT /api/media/{id}/{part}` per file, then `POST /api/media` to commit (DECISIONS D15). "Resumable" means re-sending a part after a failure; R2 multipart is only needed if a single 15 MB `PUT` proves unreliable on venue wifi
 - "Saving…" / "Saved" / "Not saved — tap to retry" states on the mount
 - Queue depth and storage warning in the writer UI
 - Server-side validation of content type, byte size, duration

@@ -130,8 +130,10 @@ photos/{entry_id}/{media_id}.jpg
 videos/{entry_id}/{media_id}.mp4
 posters/{entry_id}/{media_id}.jpg
 thumbs/{entry_id}/{media_id}.jpg
-canvases/{entry_id}/v{version}.png
+canvases/{entry_id}/{canvas_id}.png
 ```
+
+Canvas PNGs are keyed by the canvas id, not `v{version}` as first drawn (DECISIONS D16): the version is assigned by the database at commit, after the PNG is stored, and two iPads saving one page at once would otherwise overwrite each other's file.
 
 Keys are derivable from the database, and the database is reconstructable by listing the bucket. Either half can rebuild most of the other.
 
@@ -145,15 +147,21 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 |---|---|---|---|
 | `POST` | `/api/auth/login` | — | Passphrase → signed session cookie |
 | `POST` | `/api/auth/logout` | session | Clear the cookie |
+| `GET` | `/api/auth/session` | session | Whether this browser is signed in, and as which device (the cookie is HttpOnly, so the page cannot read it) |
 | `GET` | `/api/entries` | — | List entries with media and latest canvas |
 | `POST` | `/api/entries` | **session** | Create an entry |
-| `POST` | `/api/media` | **session** | Upload a photo or video + thumb + poster |
-| `POST` | `/api/canvas` | **session** | Save a canvas version |
+| `PUT` | `/api/media/{id}/{original\|thumb\|poster}` | **session** | Stream one file of a media item into R2 |
+| `POST` | `/api/media` | **session** | Commit a media item whose files are stored: writes its D1 row |
+| `PUT` | `/api/canvas/{id}` | **session** | Stream a canvas version's PNG into R2 |
+| `POST` | `/api/canvas` | **session** | Commit a canvas version: stroke JSON to D1, version number assigned |
 | `GET` | `/api/stats` | **session** | Storage used, entry count — feeds the writer's gauge |
+| `GET` | `/api/files/{r2 key}` | — | Serve a stored photo, video, poster, thumbnail or page; byte ranges for video |
 
-`functions/_middleware.ts` verifies the session for every mutating method before the handler runs. A handler is never the only thing standing between the public and a write.
+**Deny by default.** `functions/api/_middleware.ts` refuses any request without a valid session unless it is one of the three public routes above, and refuses any write whose `Origin` is another site. Every write handler checks the session again before touching D1 or R2 — a handler is never the only lock, and the middleware is never the only lock either. The middleware sits in `functions/api/`, not `functions/`, so static pages never invoke a Function.
 
-Reads are cached at Cloudflare's edge, which is what keeps bandwidth free regardless of how many guests browse.
+**Uploads are two steps** (DECISIONS D15): each file streams straight into R2, then a small JSON commit writes the D1 row — only after confirming every file is stored. A saved item's files can never be replaced.
+
+Public reads of `/api/entries` are cached at Cloudflare's edge for 30 seconds (on a custom domain; `*.pages.dev` skips the edge cache), which keeps D1's daily read allowance safe however many guests browse. A signed-in iPad always reads fresh. Stored files are served `immutable`: a key, once committed, never changes.
 
 ---
 
