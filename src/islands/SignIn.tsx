@@ -5,6 +5,8 @@ import type { DeviceId } from '../lib/types';
 
 interface Props {
   deviceId: DeviceId;
+  /** "iPad 1" — so whoever holds the iPad knows which one this page signs in. */
+  deviceLabel: string;
   copy: SignInCopy;
   onSignedIn: () => void;
 }
@@ -14,7 +16,7 @@ interface Props {
  * the session then lasts SESSION_TTL_DAYS. The server decides — this form
  * only asks.
  */
-export function SignIn({ deviceId, copy, onSignedIn }: Props) {
+export function SignIn({ deviceId, deviceLabel, copy, onSignedIn }: Props) {
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
@@ -39,7 +41,10 @@ export function SignIn({ deviceId, copy, onSignedIn }: Props) {
   }
 
   return (
-    <form class="sign-in" onSubmit={submit}>
+    <form class="sign-in" onSubmit={submit} aria-labelledby="sign-in-device">
+      <p class="sign-in__device" id="sign-in-device">
+        {deviceLabel}
+      </p>
       <label class="sign-in__label" for="passphrase">
         {copy.label}
       </label>

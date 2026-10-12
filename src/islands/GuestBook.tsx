@@ -10,6 +10,8 @@ interface Props {
   mode: AlbumMode;
   /** Write mode only: which iPad this page is. Identity, not permission. */
   deviceId?: DeviceId;
+  /** Write mode only: how that iPad is named on screen, e.g. "iPad 1". */
+  deviceLabel?: string;
   intro: string;
   copy: AlbumCopy;
 }
@@ -22,7 +24,7 @@ type Auth = 'checking' | 'signed-out' | 'signed-in';
  * Whether a write is allowed is decided by the server on every request —
  * nothing here grants anything.
  */
-export default function GuestBook({ mode, deviceId, intro, copy }: Props) {
+export default function GuestBook({ mode, deviceId, deviceLabel, intro, copy }: Props) {
   const [entries, setEntries] = useState<AlbumEntry[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [auth, setAuth] = useState<Auth>(mode === 'write' ? 'checking' : 'signed-out');
@@ -80,7 +82,9 @@ export default function GuestBook({ mode, deviceId, intro, copy }: Props) {
   if (!writing) {
     return (
       <div class="album writer__album">
-        {auth === 'signed-out' && deviceId && <SignIn deviceId={deviceId} copy={copy.signIn} onSignedIn={onSignedIn} />}
+        {auth === 'signed-out' && deviceId && (
+          <SignIn deviceId={deviceId} deviceLabel={deviceLabel ?? deviceId} copy={copy.signIn} onSignedIn={onSignedIn} />
+        )}
         {album}
       </div>
     );

@@ -16,6 +16,13 @@ const { deviceId } = Astro.props;
 
 <Base title={`${site.title} · ${site.devices[deviceId]}`}>
   <main class="writer-page">
-    <GuestBook client:load mode="write" deviceId={deviceId} intro={site.intro} copy={site.album} />
+    <GuestBook
+      client:load
+      mode="write"
+      deviceId={deviceId}
+      deviceLabel={site.devices[deviceId]}
+      intro={site.intro}
+      copy={site.album}
+    />
   </main>
 </Base>

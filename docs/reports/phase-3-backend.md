@@ -101,7 +101,7 @@ $ npm test
 
 In Chrome, against the built site with test secrets and three entries seeded through the API:
 - **Public `/`:** 3 spreads from real data (thumbnails via `/api/files`, page PNGs). No rail, no sign-in.
-- **`/ipad1` signed out:** only "Enter the passphrase"; mounts not selectable.
+- **`/ipad1` signed out:** only "Enter the passphrase", under the device's name ("iPad 1"; "iPad 2" on `/ipad2`, from `site.devices`, also in the tab title), so the two iPads are never mixed up; mounts not selectable. Lighthouse accessibility 100 with the label added.
 - **Wrong passphrase** (typed and submitted by keyboard): "That passphrase didn't match. Check it and try again." with `aria-invalid`. Shown with a `--warn` edge bar; the text stays `--on-leaf` (see "Problems", item 7).
 - **Right passphrase:** the rail appears and mounts become selectable. The cookie is `HttpOnly`, `Secure`, `SameSite=Lax`, and `document.cookie` cannot see it. **Reload: still signed in.** `/ipad2` asks again, because the session is iPad 1's.
 - **Lighthouse on the sign-in page:** performance 100, **accessibility 100**. Best practices 96, because the browser logs the expected `401` when a signed-out page asks whether it's signed in. That is correct HTTP, so I left it.

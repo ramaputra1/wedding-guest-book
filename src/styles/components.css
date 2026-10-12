@@ -415,6 +415,16 @@ button.mount {
   margin-block-end: var(--space-8);
 }
 
+/* Which iPad this page signs in, so the two are never mixed up on the day. */
+.sign-in__device {
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  font-size: var(--step-0);
+  font-weight: 600;
+  line-height: var(--leading-ui);
+  text-align: center;
+}
+
 .sign-in__label {
   color: var(--on-leaf);
   font-family: var(--font-display);
