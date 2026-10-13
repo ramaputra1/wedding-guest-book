@@ -326,6 +326,15 @@
   color: var(--on-leaf);
 }
 
+/* Cancel above an aimed mount: the word in --on-leaf over a --warn
+   underline — the same warn mark as the page's Cancel, so the two read as
+   one action. */
+.mount__cancel {
+  color: var(--on-leaf);
+  text-decoration-color: var(--warn);
+  text-decoration-thickness: var(--focus-width);
+}
+
 /* Expand (public album, owner request): opens the photo or video full
    screen. Bottom right of the print, on the same --leaf plate as the
    duration badge opposite it, inside a full 44 px target. A tap anywhere
@@ -714,11 +723,31 @@
   cursor: default;
 }
 
-/* Save is the one action that matters: it carries a hairline edge until the
-   page is saved, then rests as plain "Saved". */
-.writing-tool--save:enabled {
-  border: var(--rule-width) solid var(--on-leaf-soft);
+/* Save, Saved and Cancel are told apart by colour as well as by word (owner
+   request). Save is the one action that matters: a solid paper button, ink
+   on paper, like "Yes" in the album's dialogs. */
+.writing-tool--save[data-state='save'] {
+  margin-inline-start: var(--space-2);
+  background-color: var(--photo-paper);
+  color: var(--ink);
   font-weight: 600;
+}
+
+/* Saved is a confirmation, the state --brass exists for: brass words and a
+   brass edge (5.4:1 on the leaf). */
+.writing-tool--save[data-state='saved'] {
+  margin-inline-start: var(--space-2);
+  border: var(--rule-width) solid var(--brass);
+  color: var(--brass);
+  font-weight: 600;
+}
+
+/* Cancel leaves without saving, so it carries the --warn mark: a warn edge,
+   with the word in --on-leaf — --warn as small text would fall short of AA
+   (DESIGN.md, "--warn marks, it does not write"). */
+.writing-tool--cancel {
+  border: var(--rule-width) solid var(--warn);
+  color: var(--on-leaf);
 }
 
 /* An ink: a full-size touch target around a small drawn well of ink on a

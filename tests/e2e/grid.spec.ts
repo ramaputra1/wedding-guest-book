@@ -336,6 +336,9 @@ test('"Cancel" above an aimed mount turns the camera away; it is not offered mid
   const cancel = page.locator(`[data-spread-id="${entryId}"] .mount__cancel`);
   await expect(cancel).toHaveText('Cancel');
   await expect(cancel).toHaveAccessibleName(/^Cancel, turn the camera away from /);
+  // The same warn mark as the page's Cancel: --warn underline, --on-leaf words.
+  await expect(cancel).toHaveCSS('text-decoration-color', 'rgb(180, 101, 74)');
+  await expect(cancel).toHaveCSS('color', 'rgb(232, 228, 220)');
   // Delete waits while the camera is aimed here.
   await expect(page.locator(`[data-spread-id="${entryId}"] .mount__delete`)).toHaveCount(0);
 

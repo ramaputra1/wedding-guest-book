@@ -502,3 +502,20 @@ test('Cancel closes the page: at once when nothing is unsaved; after asking when
   await expect.poll(() => strokeCount(page)).toBe(1);
   expect((await latestStrokes(page, entryId)).version).toBe(1);
 });
+
+test('Save, Saved and Cancel are told apart by colour: paper, brass, and the warn mark', async ({ page }) => {
+  const save = page.locator('.writing-tool--save');
+  const cancel = page.locator('.writing-tool--cancel');
+  await expect(cancel).toHaveCSS('border-top-color', 'rgb(180, 101, 74)'); // --warn edge
+  await expect(cancel).toHaveCSS('color', 'rgb(232, 228, 220)'); // words stay --on-leaf
+
+  await drawWithMouse(page, [0.1, 0.2], [0.6, 0.3]);
+  await expect(save).toHaveAttribute('data-state', 'save');
+  await expect(save).toHaveCSS('background-color', 'rgb(251, 250, 247)'); // --photo-paper
+  await expect(save).toHaveCSS('color', 'rgb(26, 34, 56)'); // --ink
+
+  await saveAndWait(page);
+  await expect(save).toHaveAttribute('data-state', 'saved');
+  await expect(save).toHaveCSS('color', 'rgb(160, 138, 82)'); // --brass
+  await expect(save).toHaveCSS('border-top-color', 'rgb(160, 138, 82)');
+});

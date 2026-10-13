@@ -314,6 +314,8 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
   const count = strokes.length;
   const description = `${copy.page.label}, ${spreadName}. ${count} ${count === 1 ? copy.page.stroke : copy.page.strokes}. ${copy.page.hint}`;
   const saveLabel = unsaved || !isSaved ? copy.page.save : copy.page.saved;
+  // "save": something to save (the strong button); "saved": confirmed (brass); "idle": nothing yet.
+  const saveState = unsaved ? 'save' : isSaved ? 'saved' : 'idle';
 
   return (
     <div class="writing-desk">
@@ -391,10 +393,16 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
           <button type="button" class="writing-tool" disabled={count === 0 || load !== 'ready'} onClick={() => setAsking('clear')}>
             {copy.page.clear}
           </button>
-          <button type="button" class="writing-tool" disabled={saving} onClick={cancel}>
+          <button type="button" class="writing-tool writing-tool--cancel" disabled={saving} onClick={cancel}>
             {copy.page.cancel}
           </button>
-          <button type="button" class="writing-tool writing-tool--save" disabled={!unsaved || saving || load !== 'ready'} onClick={() => void save()}>
+          <button
+            type="button"
+            class="writing-tool writing-tool--save"
+            data-state={saveState}
+            disabled={!unsaved || saving || load !== 'ready'}
+            onClick={() => void save()}
+          >
             {saveLabel}
           </button>
         </div>

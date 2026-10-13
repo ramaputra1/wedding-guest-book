@@ -387,3 +387,13 @@ npx wrangler d1 migrations apply wedding-guestbook-test --remote --env preview
 **Tests:** `npm run typecheck` clean · `npm test` 179 passed · `npm run test:e2e` 58 passed.
 
 **Verdict:** **READY TO MERGE** (migrations 0002 and 0003 still need applying to the test database, see `docs/reports/settings.md`).
+
+---
+
+# Round 9 — 2026-10-13
+
+| Request | Result | Evidence |
+|---|---|---|
+| Emphasise Cancel (note page and photo/video box), and Save / Saved, by colour | PASS | **Save** (something to save): solid `--photo-paper` with `--ink` words. **Saved**: `--brass` words and edge — a confirmation, which brass is reserved for. **Cancel**: the `--warn` mark, as an edge on the page's Cancel and an underline above the mount, with `--on-leaf` words, since `--warn` as small text is below AA. e2e checks each computed colour, before and after saving. |
+
+All colours are existing tokens; DESIGN.md records the rule. Files: `album/WritingCanvas.tsx` (`data-state` on Save, a class on Cancel), `components.css`, `tests/e2e/canvas.spec.ts`, `tests/e2e/grid.spec.ts`, `DESIGN.md`.
