@@ -356,3 +356,34 @@ npx wrangler d1 migrations apply wedding-guestbook-test --remote --env preview
 - On a phone, on the homepage: tap a video to play or pause it, and tap the expand icon to open it full screen.
 
 **Verdict:** **READY TO MERGE** (Delete on `dev-acceptance` needs the migration above).
+
+---
+
+# Round 8 — 2026-10-13
+
+| Request | Result | Evidence |
+|---|---|---|
+| "Cancel" to make an active box inactive | PASS | **Photo box:** while the camera is aimed at a spread, **Cancel** stands where Delete would, above the print's top right. It turns the camera away. It is withheld mid-countdown and mid-recording. **Note page:** a **Cancel** tool beside Save closes the page; with unsaved strokes it asks first. e2e covers both, including the countdown case and "No" keeping the strokes. |
+| Clear asks like Delete does | PASS | The browser's `confirm()` is replaced by the album's dialog ("Clear the page?" / No / Yes, clear), now a shared `ConfirmDialog` that Delete uses too. e2e: No is focused and changes nothing; Yes clears. |
+| Undo as an icon, plus Redo as an icon | PASS | Line icons, named "Undo" and "Redo" for assistive technology. Redo restores what Undo took, until a new stroke is drawn. e2e checks the order and the reset. |
+
+**Judgement calls:**
+- **Leaving a page with Cancel:** the strokes written since the last save are discarded, after asking. If this iPad holds a saved version not yet confirmed by the server, the page goes back to that version, never to anything older.
+- **Clear and Redo:** Clear empties the Redo history too, because Clear is its own confirmed action.
+
+**Files:**
+- New: `album/ConfirmDialog.tsx`
+- Changed:
+  - `album/ConfirmRemove.tsx` (now a thin wrapper)
+  - `album/WritingCanvas.tsx` (redo, icons, Clear and Cancel dialogs)
+  - `album/MediaMount.tsx` (camera Cancel)
+  - `album/Spread.tsx`
+  - `GuestBook.tsx` (close and refocus the page; `locked` while capturing)
+  - `config/site.ts` (wording)
+  - `components.css`
+  - tests: `canvas` and `grid` e2e specs
+  - docs: `DESIGN.md`, `TESTING.md`, `STRUCTURE.md`
+
+**Tests:** `npm run typecheck` clean · `npm test` 179 passed · `npm run test:e2e` 58 passed.
+
+**Verdict:** **READY TO MERGE** (migrations 0002 and 0003 still need applying to the test database, see `docs/reports/settings.md`).

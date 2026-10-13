@@ -27,6 +27,9 @@ export interface CameraCopy {
   label: string;
   /** In the rail while no spread's "+" is pressed. */
   noDestination: string;
+  /** Above the live picture: stops aiming the camera at that spread. */
+  cancelAim: string;
+  cancelAimFor: string;
   show: string;
   hide: string;
   mode: string;
@@ -84,8 +87,18 @@ export interface PageCopy {
   inkSepia: string;
   inkOxblood: string;
   undo: string;
+  redo: string;
   clear: string;
-  confirmClear: string;
+  /** Clear asks first, the way Delete does. */
+  clearQuestion: string;
+  clearDetail: string;
+  clearYes: string;
+  /** Closes the page without saving; asks first when there are unsaved strokes. */
+  cancel: string;
+  discardQuestion: string;
+  discardDetail: string;
+  discardYes: string;
+  no: string;
   save: string;
   saved: string;
   loading: string;
@@ -360,6 +373,8 @@ export const site = {
     camera: {
       label: "Camera",
       noDestination: "Tap + on a spread",
+      cancelAim: "Cancel",
+      cancelAimFor: "Cancel, turn the camera away from",
       show: "Show camera",
       hide: "Hide camera",
       mode: "Capture mode",
@@ -409,9 +424,16 @@ export const site = {
       inkSepia: "Sepia ink",
       inkOxblood: "Oxblood ink",
       undo: "Undo",
+      redo: "Redo",
       clear: "Clear",
-      confirmClear:
-        "Clear the page? Anything already saved stays safe in the album.",
+      clearQuestion: "Clear the page?",
+      clearDetail: "Everything on the page goes. Anything already saved stays safe in the album.",
+      clearYes: "Yes, clear",
+      cancel: "Cancel",
+      discardQuestion: "Leave without saving?",
+      discardDetail: "What you wrote since the last save will go. Anything already saved stays safe in the album.",
+      discardYes: "Yes, leave",
+      no: "No",
       save: "Save",
       saved: "Saved",
       loading: "Opening the page…",

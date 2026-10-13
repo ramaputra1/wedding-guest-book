@@ -14,6 +14,8 @@ export interface PageEditor {
   onSave: (strokes: Stroke[]) => Promise<void>;
   onPenDown: () => void;
   onPenUp: () => void;
+  /** Cancel: the page goes back to paper without saving. */
+  onClose: () => void;
 }
 
 interface Props {
@@ -78,6 +80,7 @@ export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, 
             onRetry={onRetry}
             onDiscard={onDiscard}
             watermark={watermark}
+            onClose={editor.onClose}
             copy={copy}
           />
         ) : (

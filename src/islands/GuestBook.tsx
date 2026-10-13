@@ -580,6 +580,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
             stream: camera.stream,
             reviewing,
             countdown: countdown ?? undefined,
+            locked: capturing,
             onVideo: (video: HTMLVideoElement | null) => {
               previewVideo.current = video;
             },
@@ -610,6 +611,11 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
               onSave: savePage,
               onPenDown,
               onPenUp,
+              // Cancel: back to paper, and focus back on that page.
+              onClose: () => {
+                setRefocusPage(writingPageId);
+                setPageId(null);
+              },
             }
           : undefined
       }

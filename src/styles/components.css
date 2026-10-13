@@ -293,7 +293,9 @@
    no plate behind it. Quiet at rest (--on-leaf-soft, 5.6:1); brighter under
    the pointer. Not --warn (that means "not saved") and not --brass (state).
    The target is 44 px tall; the word sits at its foot, beside the print. */
-.mount__delete {
+/* "Cancel" stands in the same place while the camera is aimed here. */
+.mount__delete,
+.mount__cancel {
   position: absolute;
   z-index: 1;
   inset-block-end: calc(100% + var(--space-1));
@@ -319,7 +321,8 @@
   transition: color var(--duration-state) var(--ease);
 }
 
-.mount__delete:hover {
+.mount__delete:hover,
+.mount__cancel:hover {
   color: var(--on-leaf);
 }
 
@@ -675,6 +678,16 @@
   color: var(--on-leaf);
   font: inherit;
   cursor: pointer;
+}
+
+/* Undo and Redo: icons (owner request), named for assistive technology and
+   titled for a pointer that hovers. Line icons in the tools' own colour. */
+.writing-tool--icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* The chosen tool: brighter, heavier and underlined in brass, as the rail's

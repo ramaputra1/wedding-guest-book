@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy, PageCopy } from '../../config/site';
 import { getLatestStrokes } from '../../lib/api';
-import { readDraft, writeDraft } from '../../lib/canvas/drafts';
+import { readDraft, removeDraft, writeDraft, type Draft } from '../../lib/canvas/drafts';
 import { attachPageInput } from '../../lib/canvas/pointer';
 import { drawStroke, fromDocument, newStroke, PAGE_HEIGHT, PAGE_WIDTH, renderPage, type InkToken, type Stroke, type Tool } from '../../lib/canvas/strokes';
 import type { AlbumLook } from '../../lib/settings';
 import type { AlbumPage } from '../../lib/types';
+import { ConfirmDialog } from './ConfirmDialog';
 import { Watermark } from './Watermark';
 
 /** The draft key for the writer's fresh, not-yet-created spread. */
@@ -27,6 +28,8 @@ interface Props {
   onRetry?: (versionId: string) => void;
   onDiscard?: (versionId: string) => void;
   watermark?: AlbumLook['watermark'];
+  /** Cancel: close the page without saving (owner request). */
+  onClose: () => void;
   copy: AlbumCopy;
 }
 
@@ -69,7 +72,7 @@ function clear(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
  * pen down. Both are backed at 2× the CSS size. An eraser stroke works on the
  * lower canvas directly, from a snapshot taken when it began.
  */
-export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, onSave, onPenDown, onPenUp, onRetry, onDiscard, watermark, copy }: Props) {
+export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, onSave, onPenDown, onPenUp, onRetry, onDiscard, watermark, onClose, copy }: Props) {
   const pageKey = entryId ?? NEW_PAGE_KEY;
   const [load, setLoad] = useState<Load>('loading');
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -79,6 +82,17 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
   const [tool, setTool] = useState<Tool>('pen');
   const [ink, setInk] = useState<InkToken>('ink');
   const [saving, setSaving] = useState(false);
+  /** Strokes taken off by Undo, newest last, for Redo. Any new stroke empties it. */
+  const redoRef = useRef<Stroke[]>([]);
+  const [redoCount, setRedoCount] = useState(0);
+  /** Which question is open, if any. */
+  const [asking, setAsking] = useState<'clear' | 'discard' | null>(null);
+  /**
+   * This iPad's copy of a version saved but not yet confirmed by the server,
+   * as the page opened with it. Leaving without saving puts it back, so what
+   * was saved is still what the page reopens with.
+   */
+  const savedDraft = useRef<Draft | null>(null);
 
   const box = useRef<HTMLDivElement>(null);
   const lower = useRef<HTMLCanvasElement>(null);
@@ -117,6 +131,7 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
       setLoad('ready');
     };
     const draft = readDraft(pageKey);
+    savedDraft.current = draft && !draft.unsaved ? draft : null;
     if (draft?.unsaved || !entryId || !hasSavedVersion) {
       done(draft?.strokes ?? [], draft?.unsaved ?? false, draft !== null);
       return;
@@ -218,10 +233,13 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
           drawStroke(lowerContext, finished);
           clear(upperContext, top);
           commit([...strokesRef.current, finished], true, false);
+          forgetRedo();
         } else {
           clear(upperContext, top);
-          if (finished && finished.points.length > 0) commit([...strokesRef.current, finished], true);
-          else renderPage(bottom, strokesRef.current);
+          if (finished && finished.points.length > 0) {
+            commit([...strokesRef.current, finished], true);
+            forgetRedo();
+          } else renderPage(bottom, strokesRef.current);
         }
         pen.current.onPenUp();
       },
@@ -242,10 +260,43 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
     };
   }, [load]);
 
-  const undo = () => commit(strokesRef.current.slice(0, -1), true);
+  function forgetRedo() {
+    redoRef.current = [];
+    setRedoCount(0);
+  }
+
+  const undo = () => {
+    const last = strokesRef.current.at(-1);
+    if (!last) return;
+    redoRef.current = [...redoRef.current, last];
+    setRedoCount(redoRef.current.length);
+    commit(strokesRef.current.slice(0, -1), true);
+  };
+
+  const redo = () => {
+    const next = redoRef.current.at(-1);
+    if (!next) return;
+    redoRef.current = redoRef.current.slice(0, -1);
+    setRedoCount(redoRef.current.length);
+    commit([...strokesRef.current, next], true);
+  };
 
   const clearPage = () => {
-    if (window.confirm(copy.page.confirmClear)) commit([], true);
+    setAsking(null);
+    commit([], true);
+    forgetRedo();
+  };
+
+  /** Cancel: straight out when nothing is unsaved; otherwise only after asking. */
+  const cancel = () => (unsaved ? setAsking('discard') : onClose());
+
+  const discardAndClose = () => {
+    setAsking(null);
+    // Back to how the page stood at its last save on this iPad, or to the
+    // server's version: the strokes written since are what goes.
+    if (savedDraft.current) writeDraft(pageKey, savedDraft.current);
+    else removeDraft(pageKey);
+    onClose();
   };
 
   const save = async () => {
@@ -325,17 +376,49 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
           ))}
         </div>
         <div class="writing-tools__set">
-          <button type="button" class="writing-tool" disabled={count === 0 || load !== 'ready'} onClick={undo}>
-            {copy.page.undo}
+          <button type="button" class="writing-tool writing-tool--icon" aria-label={copy.page.undo} title={copy.page.undo} disabled={count === 0 || load !== 'ready'} onClick={undo}>
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+            </svg>
           </button>
-          <button type="button" class="writing-tool" disabled={count === 0 || load !== 'ready'} onClick={clearPage}>
+          <button type="button" class="writing-tool writing-tool--icon" aria-label={copy.page.redo} title={copy.page.redo} disabled={redoCount === 0 || load !== 'ready'} onClick={redo}>
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+              <path d="m15 14 5-5-5-5" />
+              <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" />
+            </svg>
+          </button>
+          <button type="button" class="writing-tool" disabled={count === 0 || load !== 'ready'} onClick={() => setAsking('clear')}>
             {copy.page.clear}
+          </button>
+          <button type="button" class="writing-tool" disabled={saving} onClick={cancel}>
+            {copy.page.cancel}
           </button>
           <button type="button" class="writing-tool writing-tool--save" disabled={!unsaved || saving || load !== 'ready'} onClick={() => void save()}>
             {saveLabel}
           </button>
         </div>
       </div>
+      {asking === 'clear' && (
+        <ConfirmDialog
+          question={copy.page.clearQuestion}
+          detail={copy.page.clearDetail}
+          yes={copy.page.clearYes}
+          no={copy.page.no}
+          onConfirm={clearPage}
+          onCancel={() => setAsking(null)}
+        />
+      )}
+      {asking === 'discard' && (
+        <ConfirmDialog
+          question={copy.page.discardQuestion}
+          detail={copy.page.discardDetail}
+          yes={copy.page.discardYes}
+          no={copy.page.no}
+          onConfirm={discardAndClose}
+          onCancel={() => setAsking(null)}
+        />
+      )}
     </div>
   );
 }

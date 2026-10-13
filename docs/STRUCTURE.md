@@ -77,6 +77,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │       ├── Spread.tsx
 │   │       ├── MediaMount.tsx    # print shape, viewfinder, save status, carousel
 │   │       ├── MediaViewer.tsx   # full-size photo / video on the public album
+│   │       ├── ConfirmDialog.tsx # the one way the album asks: No / Yes
 │   │       ├── ConfirmRemove.tsx # "Delete this photo?" — Yes / No
 │   │       ├── Watermark.tsx     # the owner's mark on every writing page
 │   │       ├── playback.ts       # writer iPads: saved videos play in place, one at a time

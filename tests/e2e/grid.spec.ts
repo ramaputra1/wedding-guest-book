@@ -327,3 +327,34 @@ test.describe('swiping through a spread', () => {
     await expect(page.locator('dialog.viewer')).toBeVisible();
   });
 });
+
+test('"Cancel" above an aimed mount turns the camera away; it is not offered mid-countdown', async ({ page }) => {
+  const entryId = await seedEntry(page, 1);
+  await reloadWriter(page);
+  await addTo(page, entryId);
+  await cameraReady(page);
+  const cancel = page.locator(`[data-spread-id="${entryId}"] .mount__cancel`);
+  await expect(cancel).toHaveText('Cancel');
+  await expect(cancel).toHaveAccessibleName(/^Cancel, turn the camera away from /);
+  // Delete waits while the camera is aimed here.
+  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__delete`)).toHaveCount(0);
+
+  // Mid-countdown the spread cannot change, so Cancel is not offered.
+  await page.locator('.shutter').click();
+  await expect(page.locator('.mount__countdown')).toBeVisible();
+  await expect(cancel).toHaveCount(0);
+  await page.locator('.shutter').click(); // stop the timer
+  await expect(cancel).toBeVisible();
+
+  await cancel.click();
+  await expect(live(page)).toHaveCount(0);
+  await expect(plus(page, entryId)).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.rail__destination')).toHaveText('Tap + on a spread');
+  await expect(page.locator(`[data-spread-id="${entryId}"] .mount__delete`)).toBeVisible();
+
+  // An empty spread aimed by touch has Cancel too.
+  await page.locator('[data-spread-id="new-spread"] .mount').click();
+  await cameraReady(page);
+  await page.locator('[data-spread-id="new-spread"] .mount__cancel').click();
+  await expect(live(page)).toHaveCount(0);
+});

@@ -207,12 +207,16 @@ test('clearing after a save empties the screen only: the saved version stays, an
   const saved = await latestStrokes(page, entryId);
 
   // Clear asks first: dismissing it changes nothing.
-  page.once('dialog', (dialog) => void dialog.dismiss());
+  // Clear asks in the album's own dialog, as Delete does: No changes nothing.
   await page.locator('.writing-tool', { hasText: 'Clear' }).click();
+  await expect(page.locator('dialog.confirm .confirm__question')).toHaveText('Clear the page?');
+  await expect(page.locator('dialog.confirm .confirm__no')).toBeFocused();
+  await page.locator('dialog.confirm .confirm__no').click();
+  await expect(page.locator('dialog.confirm')).toHaveCount(0);
   expect(await strokeCount(page)).toBe(1);
 
-  page.once('dialog', (dialog) => void dialog.accept());
   await page.locator('.writing-tool', { hasText: 'Clear' }).click();
+  await page.locator('dialog.confirm .confirm__yes').click();
   await expect.poll(() => strokeCount(page)).toBe(0);
   expect(await inkedPixels(page)).toBe(0);
   expect((await latestStrokes(page, entryId)).id).toBe(saved.id);
@@ -229,7 +233,7 @@ test('undo survives a resize, and strokes redraw at the new size', async ({ page
   await drawWithMouse(page, [0.1, 0.5], [0.4, 0.5]);
   await drawWithMouse(page, [0.1, 0.8], [0.4, 0.8]);
   await expect.poll(() => strokeCount(page)).toBe(3);
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect.poll(() => strokeCount(page)).toBe(2);
 
   const before = await page.locator(INK).evaluate((c: HTMLCanvasElement) => c.width);
@@ -239,8 +243,8 @@ test('undo survives a resize, and strokes redraw at the new size', async ({ page
   expect(await strokeCount(page)).toBe(2);
   expect(await inkedPixels(page)).toBeGreaterThan(100);
 
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect.poll(() => strokeCount(page)).toBe(0);
   expect(await inkedPixels(page)).toBe(0);
 });
@@ -438,4 +442,63 @@ test('on a narrow screen the tools wrap; nothing scrolls sideways', async ({ pag
     expect(box.x).toBeGreaterThanOrEqual(page_.x - 1);
     expect(box.x + box.width).toBeLessThanOrEqual(page_.x + page_.width + 1);
   }
+});
+
+test('Undo and Redo are icons; Redo brings back what Undo took, until a new stroke', async ({ page }) => {
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  const redo = page.getByRole('button', { name: 'Redo', exact: true });
+  await expect(undo.locator('svg')).toBeVisible();
+  await expect(redo.locator('svg')).toBeVisible();
+  await expect(undo).toHaveText('');
+  await expect(redo).toBeDisabled();
+
+  await drawWithMouse(page, [0.1, 0.2], [0.4, 0.2]);
+  await drawWithMouse(page, [0.1, 0.5], [0.4, 0.5]);
+  await undo.click();
+  await undo.click();
+  await expect.poll(() => strokeCount(page)).toBe(0);
+  await redo.click();
+  await expect.poll(() => strokeCount(page)).toBe(1);
+  await redo.click();
+  await expect.poll(() => strokeCount(page)).toBe(2);
+  await expect(redo).toBeDisabled();
+  expect(await inkedPixels(page)).toBeGreaterThan(100);
+
+  // A new stroke after an undo: there is nothing left to redo.
+  await undo.click();
+  await drawWithMouse(page, [0.5, 0.8], [0.9, 0.8]);
+  await expect(redo).toBeDisabled();
+  await expect.poll(() => strokeCount(page)).toBe(2);
+});
+
+test('Cancel closes the page: at once when nothing is unsaved; after asking when there is, and then the unsaved strokes go', async ({ page }) => {
+  // Nothing written: straight back to paper.
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
+  await expect(page.locator('dialog.confirm')).toHaveCount(0);
+  await expect(page.locator('[data-spread-id="new-spread"] .writing-page__choose')).toBeFocused();
+
+  // Written and saved, then more written: Cancel asks.
+  await openPage(page);
+  await deskInView(page);
+  await drawWithMouse(page, [0.1, 0.2], [0.6, 0.3]);
+  await saveAndWait(page);
+  const entryId = await deskEntryId(page);
+  await drawWithMouse(page, [0.1, 0.6], [0.6, 0.7]);
+  await expect.poll(() => strokeCount(page)).toBe(2);
+
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await expect(page.locator('dialog.confirm .confirm__question')).toHaveText('Leave without saving?');
+  // No: still writing, nothing lost.
+  await page.locator('dialog.confirm .confirm__no').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(1);
+  expect(await strokeCount(page)).toBe(2);
+
+  // Yes: closed, and reopening shows the saved page only.
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await page.locator('dialog.confirm .confirm__yes').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
+  await openPage(page, entryId);
+  await expect.poll(() => strokeCount(page)).toBe(1);
+  expect((await latestStrokes(page, entryId)).version).toBe(1);
 });

@@ -20,6 +20,8 @@ export interface LivePreview {
   reviewing: boolean;
   /** Seconds left on the photo self-timer, shown large so guests know when to smile. */
   countdown?: number;
+  /** A countdown or a recording is under way: the camera's spread cannot change. */
+  locked: boolean;
   onVideo: (video: HTMLVideoElement | null) => void;
 }
 
@@ -245,7 +247,10 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
 
   // Every saved photo or video on show carries "Delete" (owner request). One
   // still on its way has "Saving…" instead, and the live camera has neither.
-  const removable = mode === 'write' && !showLive && current !== undefined && !current.pending && onRemove !== undefined;
+  const removable = mode === 'write' && !selected && !showLive && current !== undefined && !current.pending && onRemove !== undefined;
+  // While the camera is aimed here, "Cancel" takes Delete's place (owner request) —
+  // but not mid-countdown or mid-recording, which must finish or be stopped at the shutter.
+  const cancellable = writing && selected && !live?.locked;
 
   const expandable = !writing && current !== undefined && !current.pending && onOpen !== undefined;
 
@@ -305,6 +310,11 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
   return (
     <>
       <div class="mount-wrap" {...swipe}>
+        {cancellable && (
+          <button type="button" class="mount__cancel" aria-label={`${copy.camera.cancelAimFor} ${spreadName}`} onClick={onLeave}>
+            {copy.camera.cancelAim}
+          </button>
+        )}
         {removable && (
           // Above the print's top right, on the leaf — never over the picture.
           <button
