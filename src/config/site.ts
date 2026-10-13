@@ -3,6 +3,7 @@
  * details, edit this file and nothing else — components read from it and
  * never hard-code a name, date, or line of copy.
  */
+import type { Frame, Leaf, Paper, Theme, WatermarkPosition } from "../lib/settings";
 import type { ImageMetadata } from "astro";
 import heroPhoto from "../assets/hero/hero.jpg";
 
@@ -93,6 +94,30 @@ export interface PageCopy {
 }
 
 /** Words in the full-size viewer on the public album. */
+/** Settings: the album's look, chosen on a signed-in iPad (src/lib/settings.ts). */
+export interface SettingsCopy {
+  open: string;
+  title: string;
+  intro: string;
+  leaf: { legend: string; options: Record<Leaf, string> };
+  frame: { legend: string; options: Record<Frame, string> };
+  paper: { legend: string; options: Record<Paper, string> };
+  theme: { legend: string; options: Record<Theme, string> };
+  watermark: {
+    legend: string;
+    text: string;
+    hint: string;
+    /** "12 of 24" */
+    of: string;
+    place: string;
+    options: Record<WatermarkPosition, string>;
+  };
+  save: string;
+  saving: string;
+  cancel: string;
+  failed: string;
+}
+
 /** Deleting a photo or video from a spread (writer iPads). */
 export interface RemoveCopy {
   /** The word on the button, top right of each photo or video. */
@@ -154,6 +179,7 @@ export interface AlbumCopy {
   /** What a tap on a video in its mount will do, for its accessible name. */
   playback: { play: string; pause: string };
   remove: RemoveCopy;
+  settings: SettingsCopy;
   video: string;
   seconds: string;
   blankPage: string;
@@ -253,6 +279,64 @@ export const site = {
     of: "of",
     addTo: "Add a photo or video to",
     playback: { play: "Play", pause: "Pause" },
+    settings: {
+      open: "Settings",
+      title: "Settings",
+      intro: "These change the whole album: both iPads and the album online.",
+      leaf: {
+        legend: "Album colour",
+        options: {
+          midnight: "Midnight",
+          charcoal: "Charcoal",
+          forest: "Forest",
+          wine: "Wine",
+          walnut: "Walnut",
+          navy: "Navy",
+        },
+      },
+      frame: {
+        legend: "Photo frame",
+        options: {
+          corners: "Photo corners",
+          plain: "White border",
+          polaroid: "Instant print",
+          borderless: "No border",
+        },
+      },
+      paper: {
+        legend: "Writing paper",
+        options: { ruled: "Ruled", plain: "Plain", white: "White", dotted: "Dotted" },
+      },
+      theme: {
+        legend: "Decoration",
+        options: {
+          none: "None",
+          botanical: "Botanical",
+          confetti: "Confetti",
+          starlight: "Starlight",
+        },
+      },
+      watermark: {
+        legend: "Watermark",
+        text: "Text on every page",
+        hint: "Your initials or names, up to 24 characters. Leave it empty for none.",
+        of: "of",
+        place: "Where on the page",
+        options: {
+          "top-start": "Top left",
+          top: "Top",
+          "top-end": "Top right",
+          center: "Middle",
+          "bottom-start": "Bottom left",
+          bottom: "Bottom",
+          "bottom-end": "Bottom right",
+        },
+      },
+      save: "Save",
+      saving: "Saving…",
+      cancel: "Cancel",
+      failed: "The settings didn't save. Check the wifi and try again.",
+    },
     remove: {
       label: "Delete (1)",
       buttonPhoto: "Delete this photo",

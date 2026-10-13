@@ -226,6 +226,16 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D21 — One look for the whole album, kept as history
+
+**Chosen (owner, after Phase 5):** Settings on a signed-in iPad chooses the album's colour, frame, paper, watermark and decoration for everyone, the public site included. It is stored as insert-only rows in `album_settings` (migration 0003), the newest winning. The choices are fixed lists drawn from new tokens in DESIGN.md. Anyone with a signed-in iPad may change them; on the day, a person beside each iPad keeps guests out (owner's decision; re-asking the passphrase on Save was offered and declined).
+
+**Why:** a keepsake album should look like one book, the same online as on the day. History rows keep "never overwrite" and make any past look recoverable. Fixed lists keep the design system the authority, and they keep request data from ever becoming CSS.
+
+**Exceptions to DESIGN.md, at the owner's request:** decorative ornaments on the leaf (the themes), and album colours other than the designed ink blue-black. Both are opt-in; the designed album remains the default.
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.

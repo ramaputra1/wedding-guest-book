@@ -32,7 +32,8 @@ test('"Delete" sits at the top right of every saved item; No keeps it, Yes delet
 
   // There from the start — no number needs tapping.
   await expect(del(page, entryId)).toBeVisible();
-  await expect(del(page, entryId)).toHaveText('Delete');
+  // The word is the owner's to choose (src/config/site.ts, remove.label).
+  await expect(del(page, entryId)).toHaveText(/^Delete/);
   await expect(del(page, entryId)).toHaveAccessibleName('Delete this photo');
   await expect(del(page, entryId)).toHaveCSS('text-decoration-line', 'underline');
   // Above the print's top right — not over the picture — with no plate behind it, and a full-size target.

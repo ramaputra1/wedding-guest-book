@@ -66,6 +66,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │   ├── CameraRail.tsx
 │   │   ├── Shutter.tsx
 │   │   ├── SignIn.tsx            # Phase 3
+│   │   ├── SettingsDialog.tsx    # the album's look, on signed-in iPads
 │   │   ├── merge.ts              # saved album + queued captures → what the writer sees
 │   │   ├── hooks/
 │   │   │   ├── useCamera.ts      # the live stream: on only when needed
@@ -77,6 +78,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │       ├── MediaMount.tsx    # print shape, viewfinder, save status, carousel
 │   │       ├── MediaViewer.tsx   # full-size photo / video on the public album
 │   │       ├── ConfirmRemove.tsx # "Delete this photo?" — Yes / No
+│   │       ├── Watermark.tsx     # the owner's mark on every writing page
 │   │       ├── playback.ts       # writer iPads: saved videos play in place, one at a time
 │   │       ├── PhotoCorners.tsx
 │   │       ├── WritingPage.tsx   # a page as the album shows it (saved PNG)
@@ -85,6 +87,8 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   │
 │   └── lib/
 │       ├── ids.ts                # {device}-{ULID} generation
+│       ├── settings.ts           # the look's choices and their check — shared with the server
+│       ├── look.ts               # puts the look on <html>; remembers it on the device
 │       ├── api.ts                # typed client for /api/*
 │       ├── types.ts              # shared Entry / Media / Canvas types
 │       ├── placeholder-album.ts  # Phase 2 only — deleted in Phase 3
@@ -107,13 +111,14 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   ├── tsconfig.json             # Workers types, no DOM
 │   ├── worker-runtime.d.ts       # generated: npx wrangler types functions/worker-runtime.d.ts --include-env=false
 │   └── api/
-│       ├── _middleware.ts        # deny by default: session on everything but 3 public routes
+│       ├── _middleware.ts        # deny by default: session on everything but 4 public routes
 │       ├── auth/
 │       │   ├── login.ts
 │       │   ├── logout.ts
 │       │   └── session.ts
 │       ├── entries.ts
 │       ├── media.ts              # commit
+│       ├── settings.ts           # the album's look: public GET, session POST
 │       ├── media/[id].ts         # DELETE: take an item out of the album
 │       ├── media/[id]/[part].ts  # stream one file to R2
 │       ├── canvas.ts             # commit; latest strokes
@@ -136,7 +141,8 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │
 ├── migrations/
 │   ├── 0001_init.sql
-│   └── 0002_media_removals.sql  # deleting a photo or video: hides, never erases
+│   ├── 0002_media_removals.sql  # deleting a photo or video: hides, never erases
+│   └── 0003_album_settings.sql  # the album's look (Settings), kept as history
 │
 ├── scripts/
 │   ├── prepare-hero.mjs          # original photo → stripped, resized src/assets/hero/hero.jpg

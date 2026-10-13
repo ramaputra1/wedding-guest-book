@@ -82,6 +82,7 @@ const PROTECTED: Array<[string, () => Promise<[string, Call]>]> = [
     attemptedRemovals.push(id);
     return [`/api/media/${id}`, { method: 'DELETE' }];
   }],
+  ['POST /api/settings', async () => ['/api/settings', { method: 'POST', json: { id: newId('ipad1'), look: { leaf: 'wine', frame: 'plain', paper: 'white', theme: 'confetti', watermark: { text: 'forged', position: 'top' } } } }]],
   ['GET /api/stats', async () => ['/api/stats', {}]],
   ['GET /api/auth/session', async () => ['/api/auth/session', {}]],
   ['POST /api/auth/logout', async () => ['/api/auth/logout', { method: 'POST' }]],
@@ -134,6 +135,12 @@ describe('valid session', () => {
 });
 
 describe('public routes', () => {
+  it('GET /api/settings works with no cookie, and no rejected save changed the look', async () => {
+    const response = await call(`/api/settings?visitor=${Date.now()}`);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { look: { watermark: { text: string } } }).look.watermark.text).not.toBe('forged');
+  });
+
   it('GET /api/entries works with no cookie', async () => {
     const response = await call('/api/entries');
     expect(response.status).toBe(200);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy } from '../config/site';
-import { ApiFailure, getAlbum, getSession, getStats, removeMedia } from '../lib/api';
+import { ApiFailure, getAlbum, getSession, getSettings, getStats, removeMedia, saveSettings } from '../lib/api';
 import { recorderType, type CaptureMode, type Facing } from '../lib/capture/camera';
 import { pickFromNativeCamera, videoContainerOf } from '../lib/capture/fallback';
 import { photoFromFile, photoFromVideo, type CapturedPhoto } from '../lib/capture/photo';
@@ -9,6 +9,8 @@ import { moveDraft, readDraft, removeDraft, writeDraft } from '../lib/canvas/dra
 import { EXPORT_HEIGHT, EXPORT_WIDTH, exportPng, exportStrokes } from '../lib/canvas/export';
 import type { Stroke } from '../lib/canvas/strokes';
 import { newId } from '../lib/ids';
+import { applyLook, rememberedLook, rememberLook } from '../lib/look';
+import { DEFAULT_LOOK, type AlbumLook } from '../lib/settings';
 import type { QueueItem } from '../lib/queue/store';
 import type { AlbumEntry, AlbumMedia, AlbumMode, ApiStats, DeviceId, VideoContainer } from '../lib/types';
 import { Album, NEW_SPREAD_ID } from './album/Album';
@@ -20,6 +22,7 @@ import { useCamera } from './hooks/useCamera';
 import { useUploader } from './hooks/useUploader';
 import { mergeAlbum } from './merge';
 import { holdPlayback } from './album/playback';
+import { SettingsDialog } from './SettingsDialog';
 import { SignIn } from './SignIn';
 
 interface Props {
@@ -86,6 +89,14 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set());
   /** Why the last delete failed, in words for the notice; null when it did not. */
   const [removeFailed, setRemoveFailed] = useState<string | null>(null);
+  /** The album's look as saved, and the one Settings is previewing, if open. */
+  // On the server there is no device memory; in the browser, start from what
+  // this device last saw, so the first paint never flashes the default look.
+  // (No page is drawn before the album loads, so this cannot upset hydration.)
+  const [look, setLook] = useState<AlbumLook>(() => (typeof window === 'undefined' ? DEFAULT_LOOK : rememberedLook()));
+  const [previewLook, setPreviewLook] = useState<AlbumLook | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const shownLook = previewLook ?? look;
 
   const [railOpen, setRailOpen] = useState(true);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
@@ -149,6 +160,50 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     const timer = setInterval(refreshStats, STATS_REFRESH_MS);
     return () => clearInterval(timer);
   }, [writing, refreshStats]);
+
+  // The album's look: fetch the current one. A signed-in iPad
+  // reads past any cache and checks again now and then, so a look saved on
+  // the other iPad arrives without a reload.
+  const loadLook = useCallback((fresh: boolean) => {
+    getSettings(fresh)
+      .then(({ look: current }) => {
+        setLook(current);
+        rememberLook(current);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => loadLook(false), [loadLook]);
+
+  useEffect(() => {
+    if (!writing) return;
+    loadLook(true);
+    const timer = setInterval(() => loadLook(true), STATS_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [writing, loadLook]);
+
+  useEffect(() => applyLook(shownLook), [shownLook]);
+
+  /** Settings → Save: a new look for everyone. Throws the words to show if it did not save. */
+  async function saveLook(next: AlbumLook) {
+    if (!deviceId) return;
+    try {
+      const saved = await saveSettings(newId(deviceId), next);
+      setLook(saved.look);
+      rememberLook(saved.look);
+      setPreviewLook(null);
+      setSettingsOpen(false);
+      setAnnouncement(copy.save.saved);
+    } catch (failure) {
+      // Only a request that never arrived is a wifi problem.
+      throw new Error(failure instanceof ApiFailure && failure.code !== 'network' ? failure.message : copy.settings.failed);
+    }
+  }
+
+  const closeSettings = () => {
+    setPreviewLook(null);
+    setSettingsOpen(false);
+  };
 
   const uploads = useUploader({
     enabled: writing,
@@ -544,6 +599,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
       maxItems={maxPerSpread}
       onWrite={writing ? setPageId : undefined}
       onRemove={writing ? setRemoving : undefined}
+      watermark={shownLook.watermark}
       live={livePreview}
       editor={
         writing && writingPageId !== null
@@ -620,6 +676,11 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         copy={copy.camera}
       />
       <div class="album writer__album">
+        <div class="writer__bar">
+          <button type="button" class="writer__settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
+            {copy.settings.open}
+          </button>
+        </div>
         {notices.length > 0 && (
           <div class="writer__notices" role="status">
             {notices.map((notice) => (
@@ -631,6 +692,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         )}
         {albumView}
       </div>
+      {settingsOpen && <SettingsDialog look={look} onPreview={setPreviewLook} onSave={saveLook} onCancel={closeSettings} copy={copy.settings} />}
       {removing && <ConfirmRemove item={removing} onConfirm={() => void confirmRemove()} onCancel={() => setRemoving(null)} copy={copy.remove} />}
       {/* Saves and capture problems, announced without moving focus. */}
       <p class="visually-hidden" aria-live="polite">

@@ -46,6 +46,25 @@ Everything below exists to make a screen feel like an object you could hold.
 }
 ```
 
+```css
+/* The album's look (Settings). Album colours: each sets the three leaf
+   tokens. Midnight is the designed album, repeated so a swatch of it can sit
+   on any other colour. All keep --on-leaf, --on-leaf-soft, --brass and
+   --recording at the contrast they were chosen for. */
+[data-leaf='midnight'] { --leaf: #12151C; --leaf-raised: #1C2029; --leaf-edge: #0C0E13; }
+[data-leaf='charcoal'] { --leaf: #161616; --leaf-raised: #202020; --leaf-edge: #0E0E0E; }
+[data-leaf='forest']   { --leaf: #111A15; --leaf-raised: #1A251F; --leaf-edge: #0B110D; }
+[data-leaf='wine']     { --leaf: #1C1115; --leaf-raised: #271A1F; --leaf-edge: #120A0D; }
+[data-leaf='walnut']   { --leaf: #1B1612; --leaf-raised: #26201A; --leaf-edge: #120E0B; }
+[data-leaf='navy']     { --leaf: #0F1A2B; --leaf-raised: #18253A; --leaf-edge: #09111D; }
+
+:root {
+  --writing-dot:   rgba(26, 34, 56, 0.22);   /* the "Dotted" paper's dots — --ink at 22% */
+  --watermark:     rgba(26, 34, 56, 0.28);   /* the owner's watermark on every page — --ink at 28% */
+  --ornament:      rgba(232, 228, 220, 0.12); /* a theme's ornaments on the leaf — --on-leaf at 12% */
+}
+```
+
 **The quiet idea is the two paper temperatures.** A media page is cool white and a writing page is warm — so you can tell them apart by material alone, before reading a word, exactly as you could in a real album. Never use one where the other belongs.
 
 **`--brass` is state, never decoration.** It marks the selected mount, the active rule, and save confirmation. The moment it appears as an accent on something that isn't a state, the system is broken. There are no other accent colors; do not add one.
@@ -170,6 +189,16 @@ Warm `--writing-paper`, `--radius-paper`, with a very faint baseline rule to sug
 - **Pencil** is graphite (`--ink-soft`), thinner and a little translucent. **Eraser** removes ink, never paper.
 - **Save** → "Saved": a new version every time; nothing earlier is ever replaced. **Clear** asks first, and only clears what is on screen — every saved version stays in the album's history.
 - Nothing animates near the page while the pen is down: the live camera preview beside it pauses until the pen lifts.
+
+### The album's look (Settings, owner request)
+
+On a signed-in iPad, **Settings** — the word, underlined, at the top right of the album — opens a sheet at the side of the screen (`--leaf-raised`, clear backdrop) so the album beside it shows each choice as it is made. **Save** applies it to the whole album: both iPads and the public site. **Cancel** or Escape puts the saved look back. Each question is a row of native radios; the chosen answer is semibold with a `--brass` hairline, as the rail's choices are. The designed album is the first answer to every question.
+
+- **Album colour:** Midnight (the designed `--leaf`), Charcoal, Forest, Wine, Walnut, Navy. Each redefines `--leaf`, `--leaf-raised` and `--leaf-edge` only (tokens above). All are dark on purpose: every colour on the leaf was chosen for a dark ground, and each keeps `--on-leaf-soft` above 4.5:1 and `--brass` and `--recording` above 3:1. A light album would need a second set of every on-leaf colour.
+- **Photo frame:** Photo corners (designed), White border (no corners), Instant print (no corners, a deeper `--space-6` foot), No border (the picture alone, `--radius-mount`). Without corners the selected mount keeps its brass rule and the pressed "+".
+- **Writing paper:** Ruled (designed), Plain, White (`--photo-paper`, plain), Dotted (`--writing-dot`, a 16 px grid). The saved page images are ink only, so a paper applies to every page ever written.
+- **Watermark:** the owner's text — initials, names — up to 24 characters, on every writing page: Spectral italic in `--watermark`, sized to the page (4.2% of its width; 9% in the middle), in one of seven places: the four corners, top, bottom, or the middle. Under the ink and never a target. It is a mark, like a monogram on stationery, not content: hidden from assistive technology and faint by design, so it is exempt from text contrast. Empty means none.
+- **Decoration (theme):** None (designed), Botanical, Confetti, Starlight — a faint repeating line pattern on the album's leaf in `--ornament` (`--on-leaf` at 12%), as wallpaper is. **This is the one exception to "no decoration"**, made at the owner's request: it never sits on a print or a page, never moves, never uses `--brass`, and "None" remains the default.
 
 ### Camera rail
 

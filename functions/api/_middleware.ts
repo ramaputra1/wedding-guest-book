@@ -16,6 +16,8 @@ import { MIN_SIGNING_KEY_LENGTH, SESSION_COOKIE, readCookie, verifySession } fro
 /** The only routes anyone may use without signing in. Everything else needs a session. */
 const PUBLIC_ROUTES: ReadonlyArray<{ method: string; path: RegExp }> = [
   { method: 'GET', path: /^\/api\/entries$/ },
+  // The album's look: the public album is drawn with it too.
+  { method: 'GET', path: /^\/api\/settings$/ },
   { method: 'GET', path: /^\/api\/files\/.+$/ },
   { method: 'POST', path: /^\/api\/auth\/login$/ },
 ];

@@ -1382,6 +1382,378 @@
 
 /* The script already skips the lift under reduced motion; this covers a
    preference changed after the page has loaded. */
+/* ===========================================================================
+ * The album's look — chosen in Settings, one for the whole album
+ * (src/lib/settings.ts). <html> carries data-leaf, data-frame, data-paper and
+ * data-theme; the album colours themselves are tokens (tokens.css).
+ * ======================================================================== */
+
+/* --- Photo frame --------------------------------------------------------- */
+
+/* Without corners the selected mount keeps its brass rule beneath, and the
+   pressed "+" — the state never rests on one signal. */
+[data-frame='plain'] .corner,
+[data-frame='polaroid'] .corner,
+[data-frame='borderless'] .corner {
+  display: none;
+}
+
+/* An instant print: the deeper margin at the foot is where you would write. */
+[data-frame='polaroid'] .mount__print {
+  padding: var(--space-2) var(--space-2) var(--space-6);
+}
+
+[data-frame='borderless'] .mount__print {
+  padding: 0;
+  background-color: var(--leaf-edge);
+}
+
+[data-frame='borderless'] .mount__media,
+[data-frame='borderless'] .mount__live {
+  border-radius: var(--radius-mount);
+}
+
+/* --- Writing paper ------------------------------------------------------- */
+
+/* The pages' PNGs are ink only, so a new paper applies to every page ever written. */
+[data-paper='plain'] .writing-page__rules,
+[data-paper='white'] .writing-page__rules {
+  display: none;
+}
+
+[data-paper='white'] .writing-page {
+  background-color: var(--photo-paper);
+}
+
+/* The same ruling <svg>, filled with the dot pattern instead (Album.tsx). */
+[data-paper='dotted'] .writing-page__rules rect {
+  fill: url(#writing-dots);
+}
+
+.album__defs #writing-dots circle {
+  fill: var(--writing-dot);
+}
+
+/* --- Watermark ----------------------------------------------------------- */
+
+/* Sized to the page (container units), so it sits the same on an iPad, a
+   phone and a printout. Under the ink: later layers draw over it, and it
+   takes no taps. It is a mark, like a monogram on stationery, not content:
+   hidden from assistive technology, and faint on purpose. */
+.writing-page {
+  container-type: inline-size;
+}
+
+.writing-page__watermark {
+  position: absolute;
+  max-inline-size: 60%;
+  color: var(--watermark);
+  font-family: var(--font-display);
+  font-size: 4.2cqi;
+  font-style: italic;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.writing-page__watermark[data-position^='top'] { inset-block-start: 4.5cqi; }
+.writing-page__watermark[data-position^='bottom'] { inset-block-end: 4.5cqi; }
+.writing-page__watermark[data-position$='-start'] { inset-inline-start: 5cqi; text-align: start; }
+.writing-page__watermark[data-position$='-end'] { inset-inline-end: 5cqi; text-align: end; }
+
+.writing-page__watermark[data-position='top'],
+.writing-page__watermark[data-position='bottom'] {
+  inset-inline: 0;
+  max-inline-size: none;
+  margin-inline: auto;
+  inline-size: fit-content;
+  text-align: center;
+}
+
+/* In the middle it is a true watermark: larger, centred, across the page. */
+.writing-page__watermark[data-position='center'] {
+  inset: 0;
+  inline-size: fit-content;
+  block-size: fit-content;
+  max-inline-size: 80%;
+  margin: auto;
+  font-size: 9cqi;
+  text-align: center;
+}
+
+/* --- Theme: ornaments on the leaf ----------------------------------------- */
+
+/* A faint repeating pattern on the album's leaf, as wallpaper is: --on-leaf
+   at 12%, drawn through a mask so its colour stays a token. It sits just
+   above the leaf's own colour (.album is a stacking context) and under
+   everything with a surface — mounts, pages. Never on a print or a page,
+   never animated, and "None" is the designed album. */
+html:not([data-theme='none'])[data-theme] .album::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--ornament);
+  -webkit-mask-image: var(--ornament-tile);
+  mask-image: var(--ornament-tile);
+  -webkit-mask-size: var(--ornament-size);
+  mask-size: var(--ornament-size);
+  pointer-events: none;
+}
+
+[data-theme='botanical'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E %3Cg fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round'%3E %3Cpath d='M30 250 C 55 200 80 170 120 150'/%3E%3Cpath d='M190 40 C 210 75 235 95 262 105'/%3E%3C/g%3E %3Cg fill='%23000'%3E %3Cellipse cx='52' cy='213' rx='10' ry='4' transform='rotate(-58 52 213)'/%3E %3Cellipse cx='63' cy='200' rx='10' ry='4' transform='rotate(-8 63 200)'/%3E %3Cellipse cx='80' cy='181' rx='10' ry='4' transform='rotate(-62 80 181)'/%3E %3Cellipse cx='93' cy='169' rx='10' ry='4' transform='rotate(-12 93 169)'/%3E %3Cellipse cx='110' cy='156' rx='9' ry='3.6' transform='rotate(-48 110 156)'/%3E %3Cellipse cx='204' cy='64' rx='9' ry='3.6' transform='rotate(28 204 64)'/%3E %3Cellipse cx='214' cy='79' rx='9' ry='3.6' transform='rotate(78 214 79)'/%3E %3Cellipse cx='233' cy='90' rx='9' ry='3.6' transform='rotate(30 233 90)'/%3E %3Cellipse cx='245' cy='101' rx='9' ry='3.6' transform='rotate(82 245 101)'/%3E %3Ccircle cx='150' cy='232' r='2'/%3E%3Ccircle cx='158' cy='224' r='1.4'/%3E%3Ccircle cx='118' cy='60' r='1.6'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 280px; }
+[data-theme='confetti'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='%23000'%3E %3Crect x='20' y='24' width='9' height='3' rx='1' transform='rotate(25 24 25)'/%3E %3Crect x='120' y='16' width='9' height='3' rx='1' transform='rotate(-40 124 17)'/%3E %3Crect x='70' y='80' width='9' height='3' rx='1' transform='rotate(70 74 81)'/%3E %3Crect x='150' y='110' width='9' height='3' rx='1' transform='rotate(10 154 111)'/%3E %3Crect x='30' y='140' width='9' height='3' rx='1' transform='rotate(-65 34 141)'/%3E %3Crect x='100' y='158' width='9' height='3' rx='1' transform='rotate(45 104 159)'/%3E %3Ccircle cx='60' cy='40' r='2.2'/%3E%3Ccircle cx='160' cy='60' r='2'/%3E%3Ccircle cx='20' cy='92' r='2'/%3E %3Ccircle cx='120' cy='120' r='2.4'/%3E%3Ccircle cx='70' cy='170' r='1.8'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 180px; }
+[data-theme='starlight'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='%23000'%3E%3Cpath d='M40 42 L42.0 48.0 L48 50 L42.0 52.0 L40 58 L38.0 52.0 L32 50 L38.0 48.0 Z'/%3E%3Cpath d='M170 25 L171.25 28.75 L175 30 L171.25 31.25 L170 35 L168.75 31.25 L165 30 L168.75 28.75 Z'/%3E%3Cpath d='M120 120 L122.5 127.5 L130 130 L122.5 132.5 L120 140 L117.5 132.5 L110 130 L117.5 127.5 Z'/%3E%3Cpath d='M30 175 L31.25 178.75 L35 180 L31.25 181.25 L30 185 L28.75 181.25 L25 180 L28.75 178.75 Z'/%3E%3Cpath d='M195 168 L196.75 173.25 L202 175 L196.75 176.75 L195 182 L193.25 176.75 L188 175 L193.25 173.25 Z'/%3E%3Ccircle cx='90' cy='30' r='1.4'/%3E%3Ccircle cx='70' cy='100' r='1.2'/%3E%3Ccircle cx='190' cy='100' r='1.4'/%3E%3Ccircle cx='150' cy='200' r='1.2'/%3E%3Ccircle cx='10' cy='120' r='1.2'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 220px; }
+
+/* --- Settings (writer iPads) -------------------------------------------- */
+
+.writer__bar {
+  display: flex;
+  justify-content: flex-end;
+  max-inline-size: var(--album-max);
+  margin-inline: auto;
+  padding-inline: var(--page-margin);
+}
+
+/* Words, underlined, like "Delete": a quiet control on the leaf. */
+.writer__settings {
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--on-leaf-soft);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  text-decoration: underline;
+  text-decoration-thickness: var(--rule-width);
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+}
+
+.writer__settings:hover {
+  color: var(--on-leaf);
+}
+
+/* A sheet at the side, not a centred box: the album beside it shows every
+   choice as it is made. The backdrop is clear for the same reason — and
+   still blocks the album underneath, as a modal must. */
+.settings {
+  inline-size: min(100%, 26rem);
+  max-inline-size: none;
+  block-size: 100svh;
+  max-block-size: none;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  border-inline-start: var(--rule-width) solid var(--leaf-edge);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.settings::backdrop {
+  background: none;
+}
+
+.settings[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.settings__body {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+  overflow-y: auto;
+  padding: var(--space-6);
+  overscroll-behavior: contain;
+}
+
+.settings__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+.settings__intro,
+.settings__hint {
+  margin: 0;
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+}
+
+.settings__group {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings__legend {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  font-weight: 600;
+}
+
+.settings__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+/* Each choice: a native radio, invisible over its label, so arrow keys work.
+   The chosen one is brighter, heavier and underlined in brass, as the rail's
+   choices are. */
+.settings__choice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+
+.settings__choice input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settings__choice:has(input:checked) {
+  color: var(--on-leaf);
+  font-weight: 600;
+}
+
+.settings__choice:has(input:checked)::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
+  background-color: var(--brass);
+}
+
+.settings__choice:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--brass);
+  outline-offset: calc(var(--space-1) * -1);
+}
+
+/* An album colour: a disc of that colour (its own data-leaf sets --leaf),
+   ringed so even the darkest shows on the sheet; the chosen one in brass. */
+.settings__swatch {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
+  border-radius: 50%;
+  background-color: var(--leaf);
+  box-shadow: 0 0 0 var(--rule-width) var(--on-leaf-soft);
+}
+
+.settings__choice--swatch {
+  grid-template-rows: auto auto;
+  gap: var(--space-1);
+  padding-block: var(--space-1);
+}
+
+.settings__choice--swatch:has(input:checked)::after {
+  display: none;
+}
+
+.settings__choice--swatch:has(input:checked) .settings__swatch {
+  box-shadow: 0 0 0 var(--focus-width) var(--brass);
+}
+
+/* The seven watermark places, laid out as they sit on the page. */
+.settings__places {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    'top-start top top-end'
+    '. center .'
+    'bottom-start bottom bottom-end';
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-paper);
+  background-color: var(--leaf);
+}
+
+.settings__places .settings__choice {
+  padding-inline: var(--space-1);
+  text-align: center;
+}
+
+.settings__input {
+  inline-size: 100%;
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  border-radius: var(--radius-button);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  font: inherit;
+}
+
+.settings__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.settings__problem {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--focus-width) solid var(--warn);
+  color: var(--on-leaf);
+  font-size: var(--step--1);
+}
+
+.settings__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  border-block-start: var(--rule-width) solid var(--leaf-edge);
+}
+
+.settings__cancel,
+.settings__save {
+  min-inline-size: var(--space-8);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-button);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings__cancel {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  background: none;
+  color: var(--on-leaf);
+}
+
+.settings__save {
+  border: 0;
+  background-color: var(--photo-paper);
+  color: var(--ink);
+}
+
+.settings__save:disabled {
+  cursor: progress;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lift-ready .album,
   .lifted .hero__cover {

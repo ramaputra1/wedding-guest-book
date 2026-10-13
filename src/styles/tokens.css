@@ -29,6 +29,23 @@
   --writing-rule:  rgba(26, 34, 56, 0.08);  /* faint ruled lines on writing paper — --ink at 8% */
 }
 
+/* The album's look (Settings). Album colours: each sets the three leaf
+   tokens. Midnight is the designed album, repeated so a swatch of it can sit
+   on any other colour. All keep --on-leaf, --on-leaf-soft, --brass and
+   --recording at the contrast they were chosen for. */
+[data-leaf='midnight'] { --leaf: #12151C; --leaf-raised: #1C2029; --leaf-edge: #0C0E13; }
+[data-leaf='charcoal'] { --leaf: #161616; --leaf-raised: #202020; --leaf-edge: #0E0E0E; }
+[data-leaf='forest']   { --leaf: #111A15; --leaf-raised: #1A251F; --leaf-edge: #0B110D; }
+[data-leaf='wine']     { --leaf: #1C1115; --leaf-raised: #271A1F; --leaf-edge: #120A0D; }
+[data-leaf='walnut']   { --leaf: #1B1612; --leaf-raised: #26201A; --leaf-edge: #120E0B; }
+[data-leaf='navy']     { --leaf: #0F1A2B; --leaf-raised: #18253A; --leaf-edge: #09111D; }
+
+:root {
+  --writing-dot:   rgba(26, 34, 56, 0.22);   /* the "Dotted" paper's dots — --ink at 22% */
+  --watermark:     rgba(26, 34, 56, 0.28);   /* the owner's watermark on every page — --ink at 28% */
+  --ornament:      rgba(232, 228, 220, 0.12); /* a theme's ornaments on the leaf — --on-leaf at 12% */
+}
+
 /* Typography */
 :root {
   --font-display: 'Spectral', 'Spectral Fallback', Georgia, 'Times New Roman', serif;

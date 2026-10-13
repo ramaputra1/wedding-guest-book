@@ -81,6 +81,12 @@ export interface ApiError {
   message: string;
 }
 
+/** GET /api/settings: the album's look, and when it was saved (null: never — the defaults). */
+export interface ApiSettings {
+  look: import('./settings').AlbumLook;
+  savedAt: number | null;
+}
+
 export interface ApiSession {
   deviceId: DeviceId;
   /** Epoch ms. */

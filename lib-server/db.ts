@@ -166,6 +166,32 @@ export async function insertMedia(db: D1Database, m: NewMedia): Promise<boolean>
   return result.meta.changes === 1;
 }
 
+const MISSING_SETTINGS_TABLE = 'no such table: album_settings';
+
+/** True when the database has not had migration 0003 yet. */
+export function isMissingSettingsTable(failure: unknown): boolean {
+  return String(failure).includes(MISSING_SETTINGS_TABLE);
+}
+
+/** The look in use: the newest saved row, or null when none has been saved (or before migration 0003). */
+export async function latestSettings(db: D1Database): Promise<{ data: string; created_at: number } | null> {
+  try {
+    return await db.prepare('SELECT data, created_at FROM album_settings ORDER BY created_at DESC, id DESC LIMIT 1').first();
+  } catch (failure) {
+    if (isMissingSettingsTable(failure)) return null;
+    throw failure;
+  }
+}
+
+/** Saves a look as a new row; earlier looks stay. False when this id was already saved. */
+export async function insertSettings(db: D1Database, row: { id: string; deviceId: string; data: string; createdAt: number }): Promise<boolean> {
+  const result = await db
+    .prepare('INSERT OR IGNORE INTO album_settings (id, device_id, data, created_at) VALUES (?, ?, ?, ?)')
+    .bind(row.id, row.deviceId, row.data, row.createdAt)
+    .run();
+  return result.meta.changes > 0;
+}
+
 /** Takes a media item out of the album. False when it was already removed. */
 export async function insertRemoval(db: D1Database, removal: { mediaId: string; deviceId: string; removedAt: number }): Promise<boolean> {
   const result = await db

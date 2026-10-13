@@ -5,6 +5,7 @@ import { MediaMount, type LivePreview } from './MediaMount';
 import { WritingCanvas } from './WritingCanvas';
 import { WritingPage } from './WritingPage';
 import type { Stroke } from '../../lib/canvas/strokes';
+import type { AlbumLook } from '../../lib/settings';
 
 /** Turns this spread's page into a canvas: the page the writer chose by tapping it. */
 export interface PageEditor {
@@ -27,6 +28,8 @@ interface Props {
   onLeave: () => void;
   canAdd: boolean;
   onRemove?: (item: AlbumMedia) => void;
+  /** The owner's mark on every page (Settings). */
+  watermark?: AlbumLook['watermark'];
   /** Write mode: the page was tapped — write on it. */
   onWrite?: () => void;
   live?: LivePreview;
@@ -39,7 +42,7 @@ interface Props {
 }
 
 /** One entry as an open spread: media left, its handwriting right, the gutter between. */
-export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, canAdd, onRemove, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, canAdd, onRemove, watermark, onWrite, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   return (
     <article class="spread" aria-label={name} data-spread-id={spreadId}>
       <div class="spread__media">
@@ -74,6 +77,7 @@ export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, 
             onPenUp={editor.onPenUp}
             onRetry={onRetry}
             onDiscard={onDiscard}
+            watermark={watermark}
             copy={copy}
           />
         ) : (
@@ -83,6 +87,7 @@ export function Spread({ entry, spreadId, name, mode, selected, onAdd, onLeave, 
             onRetry={onRetry}
             onWrite={mode === 'write' ? onWrite : undefined}
             writeLabel={`${copy.page.write}, ${name}`}
+            watermark={watermark}
             copy={copy}
           />
         )}

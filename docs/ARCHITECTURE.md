@@ -108,6 +108,14 @@ CREATE INDEX idx_entries_created ON entries(created_at);
 CREATE INDEX idx_media_entry     ON media(entry_id, sort_order);
 CREATE INDEX idx_canvases_entry  ON canvases(entry_id, version DESC);
 
+-- migrations/0003_album_settings.sql (owner request after Phase 5)
+CREATE TABLE album_settings (
+  id          TEXT PRIMARY KEY,   -- made on the iPad
+  device_id   TEXT NOT NULL,
+  data        TEXT NOT NULL,      -- JSON: the look (src/lib/settings.ts)
+  created_at  INTEGER NOT NULL    -- server clock: the latest wins
+);
+
 -- migrations/0002_media_removals.sql (owner request after Phase 5)
 CREATE TABLE media_removals (
   media_id    TEXT PRIMARY KEY REFERENCES media(id),
@@ -164,11 +172,13 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 | `PUT` | `/api/canvas/{id}` | **session** | Stream a canvas version's PNG into R2 |
 | `POST` | `/api/canvas` | **session** | Commit a canvas version: stroke JSON to D1, version number assigned |
 | `GET` | `/api/canvas?entryId=` | **session** | The latest version's stroke JSON, so a writer can carry on writing on that page |
+| `GET` | `/api/settings` | — | The album's look (colour, frame, paper, watermark, theme); the public album is drawn with it |
+| `POST` | `/api/settings` | **session** | Save a new look: a new row, never an update |
 | `DELETE` | `/api/media/{id}` | **session** | Take a photo or video out of the album: a row in `media_removals`; nothing is erased |
 | `GET` | `/api/stats` | **session** | Storage used, entry count — feeds the writer's gauge |
 | `GET` | `/api/files/{r2 key}` | — | Serve a stored photo, video, poster, thumbnail or page; byte ranges for video |
 
-**Deny by default.** `functions/api/_middleware.ts` refuses any request without a valid session unless it is one of the three public routes above, and refuses any write whose `Origin` is another site. Every write handler checks the session again before touching D1 or R2 — a handler is never the only lock, and the middleware is never the only lock either. The middleware sits in `functions/api/`, not `functions/`, so static pages never invoke a Function.
+**Deny by default.** `functions/api/_middleware.ts` refuses any request without a valid session unless it is one of the four public routes above, and refuses any write whose `Origin` is another site. Every write handler checks the session again before touching D1 or R2 — a handler is never the only lock, and the middleware is never the only lock either. The middleware sits in `functions/api/`, not `functions/`, so static pages never invoke a Function.
 
 **Uploads are two steps** (DECISIONS D15): each file streams straight into R2, then a small JSON commit writes the D1 row — only after confirming every file is stored. A saved item's files can never be replaced.
 
@@ -222,6 +232,25 @@ A capture is not "saved" until storage confirms it. The sequence:
 5. Queued items retry automatically when connectivity returns.
 
 **Queue sizing caveat.** The IndexedDB queue shares the ~1 GB iOS browser budget. At 5 MB a video, a total wifi failure would take roughly 150–200 queued clips to fill it. The writer UI shows queue depth and a storage warning when pending uploads build up, so the problem surfaces during the wedding rather than after it.
+
+---
+
+## The album's look
+
+Owner request after Phase 5. **Settings** on a signed-in iPad chooses the album's colour, photo frame, writing paper, watermark and decoration (DESIGN.md, "The album's look"). There is one look for the whole album: both iPads and the public site. The owner relies on a person beside each iPad to keep guests out of Settings; the server only checks that the iPad is signed in.
+
+- **Stored as history.** `POST /api/settings` (session) inserts a row into `album_settings`. The newest row by server time is the look in use. Nothing is updated, so every earlier look can be brought back:
+
+  ```sql
+  SELECT id, device_id, datetime(created_at/1000,'unixepoch'), data FROM album_settings ORDER BY created_at DESC
+  ```
+
+  To restore a look, delete the rows newer than it.
+- **Only fixed values.** `src/lib/settings.ts` is shared by the server and the island. Every choice must be one from a fixed list, and the watermark is at most 24 characters with no control characters. Nothing a request sends becomes CSS, markup or a file name, and the watermark is only ever rendered as text.
+- **Public reads and caching.** `GET /api/settings` is public and cached for 30 s like the album, so a new look can take that long to reach visitors. Signed-in iPads read past the cache and check again every minute, so a look saved on one iPad reaches the other without a reload.
+- **Applied in CSS.** The island puts `data-leaf`, `data-frame`, `data-paper` and `data-theme` on `<html>`, and `components.css` does the rest. The watermark is a text element on each writing page, under the ink.
+- **No flash on return.** The look is kept in `localStorage`, and a few-line inline script in `layouts/Base.astro` applies it before first paint, so a returning visitor never sees the default colours flash. The cover still hydrates nothing.
+- **Before migration 0003 is applied,** the album shows the designed look and saving answers `503 migration_missing`.
 
 ---
 

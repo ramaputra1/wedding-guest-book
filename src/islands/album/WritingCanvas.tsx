@@ -4,7 +4,9 @@ import { getLatestStrokes } from '../../lib/api';
 import { readDraft, writeDraft } from '../../lib/canvas/drafts';
 import { attachPageInput } from '../../lib/canvas/pointer';
 import { drawStroke, fromDocument, newStroke, PAGE_HEIGHT, PAGE_WIDTH, renderPage, type InkToken, type Stroke, type Tool } from '../../lib/canvas/strokes';
+import type { AlbumLook } from '../../lib/settings';
 import type { AlbumPage } from '../../lib/types';
+import { Watermark } from './Watermark';
 
 /** The draft key for the writer's fresh, not-yet-created spread. */
 export const NEW_PAGE_KEY = 'new-spread';
@@ -24,6 +26,7 @@ interface Props {
   onPenUp: () => void;
   onRetry?: (versionId: string) => void;
   onDiscard?: (versionId: string) => void;
+  watermark?: AlbumLook['watermark'];
   copy: AlbumCopy;
 }
 
@@ -66,7 +69,7 @@ function clear(context: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
  * pen down. Both are backed at 2× the CSS size. An eraser stroke works on the
  * lower canvas directly, from a snapshot taken when it began.
  */
-export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, onSave, onPenDown, onPenUp, onRetry, onDiscard, copy }: Props) {
+export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, onSave, onPenDown, onPenUp, onRetry, onDiscard, watermark, copy }: Props) {
   const pageKey = entryId ?? NEW_PAGE_KEY;
   const [load, setLoad] = useState<Load>('loading');
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -267,6 +270,7 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
         <svg class="writing-page__rules" aria-hidden="true" focusable="false">
           <rect width="100%" height="100%" fill="url(#writing-rules)" />
         </svg>
+        <Watermark mark={watermark} />
         {load === 'ready' ? (
           <>
             <canvas ref={lower} class="writing-page__ink" aria-hidden="true" />

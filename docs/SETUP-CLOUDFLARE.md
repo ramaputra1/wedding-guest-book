@@ -126,6 +126,8 @@ npx wrangler d1 migrations apply wedding-guestbook-test --remote --env preview
 
 Each should end with `0001_init.sql ✅`. Running them again is safe — applied migrations are skipped. Future phases add new numbered files; the same commands apply them.
 
+**`0003_album_settings.sql`** (Settings: the album's look) adds one table and changes nothing existing. Same rule: apply it to the test database before the code reaches `dev-acceptance`, and to production before `main`. Without it the album shows the designed look and Save says the migration is missing.
+
 **`0002_media_removals.sql`** (deleting photos and videos) adds one table and changes nothing existing. Apply it to the **test** database before the code that uses it reaches `dev-acceptance`, and to **production** before it reaches `main`. If the code gets there first the album still loads (it shows everything), but deleting fails until the migration is applied.
 
 ### Local development

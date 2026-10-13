@@ -3,7 +3,8 @@
  * cookie travels with every request on its own; page JavaScript never sees it.
  */
 import type { AlbumCopy } from '../config/site';
-import type { AlbumEntry, ApiEntries, ApiEntry, ApiError, ApiErrorCode, ApiSession, ApiStats, DeviceId, MediaKind, VideoContainer } from './types';
+import type { AlbumLook } from './settings';
+import type { AlbumEntry, ApiEntries, ApiEntry, ApiError, ApiErrorCode, ApiSession, ApiSettings, ApiStats, DeviceId, MediaKind, VideoContainer } from './types';
 
 export class ApiFailure extends Error {
   constructor(
@@ -52,6 +53,16 @@ export function signIn(deviceId: DeviceId, passphrase: string): Promise<ApiSessi
 
 export function signOut(): Promise<unknown> {
   return call('/api/auth/logout', { method: 'POST' });
+}
+
+/** The album's look. `fresh` skips any cached copy (a signed-in iPad always wants the latest). */
+export function getSettings(fresh = false): Promise<ApiSettings> {
+  return call<ApiSettings>('/api/settings', fresh ? { cache: 'no-store' } : undefined);
+}
+
+/** Saves a new look for the whole album: a new row, never over the last one. */
+export function saveSettings(id: string, look: AlbumLook): Promise<ApiSettings> {
+  return call<ApiSettings>('/api/settings', postJson({ id, look }));
 }
 
 export function getStats(): Promise<ApiStats> {
