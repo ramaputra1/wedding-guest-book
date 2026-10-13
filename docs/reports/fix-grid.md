@@ -397,3 +397,13 @@ npx wrangler d1 migrations apply wedding-guestbook-test --remote --env preview
 | Emphasise Cancel (note page and photo/video box), and Save / Saved, by colour | PASS | **Save** (something to save): solid `--photo-paper` with `--ink` words. **Saved**: `--brass` words and edge — a confirmation, which brass is reserved for. **Cancel**: the `--warn` mark, as an edge on the page's Cancel and an underline above the mount, with `--on-leaf` words, since `--warn` as small text is below AA. e2e checks each computed colour, before and after saving. |
 
 All colours are existing tokens; DESIGN.md records the rule. Files: `album/WritingCanvas.tsx` (`data-state` on Save, a class on Cancel), `components.css`, `tests/e2e/canvas.spec.ts`, `tests/e2e/grid.spec.ts`, `DESIGN.md`.
+
+---
+
+# Round 10 — 2026-10-13
+
+| Request | Result | Evidence |
+|---|---|---|
+| Note page only: Cancel, Save and Saved without button styling or radius; underlines in different colours, as with the photo box's Cancel | PASS | No border, no background, no radius on any of the three. Underlines are 2 px at the same offset as the mount's Cancel. **Cancel:** `--warn` underline, `--on-leaf` words. **Save:** `--on-leaf` underline, semibold. **Saved:** `--brass` words and underline. **Nothing written yet:** an `--on-leaf-soft` hairline. e2e checks each computed value, before and after saving. |
+
+Files: `components.css`, `tests/e2e/canvas.spec.ts`, `DESIGN.md`. Round 9's solid Save button and bordered Cancel are replaced.

@@ -723,31 +723,44 @@
   cursor: default;
 }
 
-/* Save, Saved and Cancel are told apart by colour as well as by word (owner
-   request). Save is the one action that matters: a solid paper button, ink
-   on paper, like "Yes" in the album's dialogs. */
-.writing-tool--save[data-state='save'] {
-  margin-inline-start: var(--space-2);
-  background-color: var(--photo-paper);
-  color: var(--ink);
-  font-weight: 600;
+/* Cancel, Save and Saved are words, underlined — no box, no fill, no radius
+   — like "Cancel" above an aimed mount (owner request). The underline's
+   colour tells them apart; the words stay readable on the leaf. */
+.writing-tool--cancel,
+.writing-tool--save {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-decoration: underline;
+  text-decoration-thickness: var(--focus-width);
+  text-underline-offset: var(--space-1);
 }
 
-/* Saved is a confirmation, the state --brass exists for: brass words and a
-   brass edge (5.4:1 on the leaf). */
+/* Cancel leaves without saving: the --warn underline, words in --on-leaf
+   (--warn as small text would fall short of AA — "--warn marks, it does not write"). */
+.writing-tool--cancel {
+  color: var(--on-leaf);
+  text-decoration-color: var(--warn);
+}
+
+/* Save, with something to save: the one strong word — --on-leaf, semibold. */
+.writing-tool--save[data-state='save'] {
+  color: var(--on-leaf);
+  font-weight: 600;
+  text-decoration-color: var(--on-leaf);
+}
+
+/* Saved is a confirmation, the state --brass exists for (5.4:1 on the leaf). */
 .writing-tool--save[data-state='saved'] {
-  margin-inline-start: var(--space-2);
-  border: var(--rule-width) solid var(--brass);
   color: var(--brass);
   font-weight: 600;
+  text-decoration-color: var(--brass);
 }
 
-/* Cancel leaves without saving, so it carries the --warn mark: a warn edge,
-   with the word in --on-leaf — --warn as small text would fall short of AA
-   (DESIGN.md, "--warn marks, it does not write"). */
-.writing-tool--cancel {
-  border: var(--rule-width) solid var(--warn);
-  color: var(--on-leaf);
+/* Nothing written yet: quiet, and only a hairline. */
+.writing-tool--save[data-state='idle'] {
+  text-decoration-color: var(--on-leaf-soft);
+  text-decoration-thickness: var(--rule-width);
 }
 
 /* An ink: a full-size touch target around a small drawn well of ink on a
