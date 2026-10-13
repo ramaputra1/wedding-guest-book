@@ -1,23 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy } from '../config/site';
-import { getAlbum, getSession, getStats } from '../lib/api';
+import { ApiFailure, getAlbum, getSession, getSettings, getStats, removeMedia, saveSettings } from '../lib/api';
 import { recorderType, type CaptureMode, type Facing } from '../lib/capture/camera';
 import { pickFromNativeCamera, videoContainerOf } from '../lib/capture/fallback';
 import { photoFromFile, photoFromVideo, type CapturedPhoto } from '../lib/capture/photo';
 import { startRecording, videoStills, type RecordingControl } from '../lib/capture/video';
-import { readDraft, removeDraft, writeDraft } from '../lib/canvas/drafts';
+import { moveDraft, readDraft, removeDraft, writeDraft } from '../lib/canvas/drafts';
 import { EXPORT_HEIGHT, EXPORT_WIDTH, exportPng, exportStrokes } from '../lib/canvas/export';
 import type { Stroke } from '../lib/canvas/strokes';
 import { newId } from '../lib/ids';
+import { applyLook, rememberedLook, rememberLook } from '../lib/look';
+import { DEFAULT_LOOK, type AlbumLook } from '../lib/settings';
 import type { QueueItem } from '../lib/queue/store';
 import type { AlbumEntry, AlbumMedia, AlbumMode, ApiStats, DeviceId, VideoContainer } from '../lib/types';
 import { Album, NEW_SPREAD_ID } from './album/Album';
+import { ConfirmRemove } from './album/ConfirmRemove';
 import { MediaViewer } from './album/MediaViewer';
 import { NEW_PAGE_KEY } from './album/WritingCanvas';
 import { CameraRail } from './CameraRail';
 import { useCamera } from './hooks/useCamera';
 import { useUploader } from './hooks/useUploader';
 import { mergeAlbum } from './merge';
+import { holdPlayback } from './album/playback';
+import { SettingsDialog } from './SettingsDialog';
 import { SignIn } from './SignIn';
 
 interface Props {
@@ -32,6 +37,8 @@ interface Props {
   maxVideoMs?: number;
   /** Self-timer choices for photos, in seconds; the first is the default. */
   photoTimers?: readonly number[];
+  /** A spread holds at most this many photos and videos together. */
+  maxPerSpread?: number;
   intro: string;
   copy: AlbumCopy;
 }
@@ -65,12 +72,31 @@ const STATS_REFRESH_MS = 60_000;
  * queue and the rail. Whether a write is allowed is decided by the server on
  * every request — nothing here grants anything.
  */
-export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user', maxVideoMs = 15_000, photoTimers = [3, 5], intro, copy }: Props) {
+export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user', maxVideoMs = 15_000, photoTimers = [3, 5], maxPerSpread = 6, intro, copy }: Props) {
   const [entries, setEntries] = useState<AlbumEntry[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [auth, setAuth] = useState<Auth>(mode === 'write' ? 'checking' : 'signed-out');
+  /** The spread whose "+" is pressed: where the next capture lands. None until a guest chooses. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** The page open for writing, chosen by tapping it — independent of the camera's spread. */
+  const [pageId, setPageId] = useState<string | null>(null);
+  /** A page just closed by Save, to hand keyboard focus back to once it is on screen. */
+  const [refocusPage, setRefocusPage] = useState<string | null>(null);
   const [viewing, setViewing] = useState<AlbumMedia | null>(null);
+  /** The item whose trash button was pressed: the Yes / No question is open. */
+  const [removing, setRemoving] = useState<AlbumMedia | null>(null);
+  /** Deleted on this iPad: hidden at once, before the album is read again. */
+  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(new Set());
+  /** Why the last delete failed, in words for the notice; null when it did not. */
+  const [removeFailed, setRemoveFailed] = useState<string | null>(null);
+  /** The album's look as saved, and the one Settings is previewing, if open. */
+  // On the server there is no device memory; in the browser, start from what
+  // this device last saw, so the first paint never flashes the default look.
+  // (No page is drawn before the album loads, so this cannot upset hydration.)
+  const [look, setLook] = useState<AlbumLook>(() => (typeof window === 'undefined' ? DEFAULT_LOOK : rememberedLook()));
+  const [previewLook, setPreviewLook] = useState<AlbumLook | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const shownLook = previewLook ?? look;
 
   const [railOpen, setRailOpen] = useState(true);
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo');
@@ -135,6 +161,50 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     return () => clearInterval(timer);
   }, [writing, refreshStats]);
 
+  // The album's look: fetch the current one. A signed-in iPad
+  // reads past any cache and checks again now and then, so a look saved on
+  // the other iPad arrives without a reload.
+  const loadLook = useCallback((fresh: boolean) => {
+    getSettings(fresh)
+      .then(({ look: current }) => {
+        setLook(current);
+        rememberLook(current);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => loadLook(false), [loadLook]);
+
+  useEffect(() => {
+    if (!writing) return;
+    loadLook(true);
+    const timer = setInterval(() => loadLook(true), STATS_REFRESH_MS);
+    return () => clearInterval(timer);
+  }, [writing, loadLook]);
+
+  useEffect(() => applyLook(shownLook), [shownLook]);
+
+  /** Settings → Save: a new look for everyone. Throws the words to show if it did not save. */
+  async function saveLook(next: AlbumLook) {
+    if (!deviceId) return;
+    try {
+      const saved = await saveSettings(newId(deviceId), next);
+      setLook(saved.look);
+      rememberLook(saved.look);
+      setPreviewLook(null);
+      setSettingsOpen(false);
+      setAnnouncement(copy.save.saved);
+    } catch (failure) {
+      // Only a request that never arrived is a wifi problem.
+      throw new Error(failure instanceof ApiFailure && failure.code !== 'network' ? failure.message : copy.settings.failed);
+    }
+  }
+
+  const closeSettings = () => {
+    setPreviewLook(null);
+    setSettingsOpen(false);
+  };
+
   const uploads = useUploader({
     enabled: writing,
     onSaved: (item) => {
@@ -175,23 +245,74 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
 
   const album = useMemo(() => {
     if (mode !== 'write' || !deviceId || entries === null) return entries;
-    return mergeAlbum(entries, uploads.items, thumbUrls, deviceId, {
+    const merged = mergeAlbum(entries, uploads.items, thumbUrls, deviceId, {
       photoAlt: copy.photoAlt,
       videoAlt: copy.videoAlt,
       pageAlt: copy.handwrittenPage,
     });
-  }, [mode, deviceId, entries, uploads.items, thumbUrls, copy]);
+    if (removedIds.size === 0) return merged;
+    return merged.map((entry) => ({ ...entry, media: entry.media.filter((item) => !removedIds.has(item.id)) }));
+  }, [mode, deviceId, entries, uploads.items, thumbUrls, copy, removedIds]);
 
-  const destinationId =
-    selectedId && selectedId !== NEW_SPREAD_ID && album?.some((entry) => entry.id === selectedId) ? selectedId : NEW_SPREAD_ID;
+  /**
+   * "Yes, delete": the item leaves the album at once, then the server records
+   * the removal (nothing is erased — functions/api/media/[id].ts). If that
+   * fails it comes back, and a notice says so.
+   */
+  async function confirmRemove() {
+    const item = removing;
+    setRemoving(null);
+    if (!item) return;
+    setRemoveFailed(null);
+    setRemovedIds((current) => new Set(current).add(item.id));
+    try {
+      await removeMedia(item.id);
+      void load(true);
+      refreshStats();
+    } catch (failure) {
+      setRemovedIds((current) => {
+        const next = new Set(current);
+        next.delete(item.id);
+        return next;
+      });
+      // Only a request that never arrived is a wifi problem; anything the
+      // server answered is shown as the server said it.
+      const reached = failure instanceof ApiFailure && failure.code !== 'network';
+      const message = reached ? failure.message : copy.remove.failed;
+      setRemoveFailed(message);
+      setAnnouncement(message);
+    }
+  }
+
+  const inAlbum = (id: string | null) => id !== null && (id === NEW_SPREAD_ID || (album?.some((entry) => entry.id === id) ?? false));
+  const destinationId = inAlbum(selectedId) ? selectedId : null;
+  const writingPageId = inAlbum(pageId) ? pageId : null;
+  const capturing = recording !== null || countdown !== null;
 
   const recorderMime = useMemo(() => (typeof window === 'undefined' ? null : recorderType()), []);
-  const camera = useCamera({ active: writing && railOpen, mode: captureMode, facing, locked: recording !== null || countdown !== null });
+  // The camera is on only while a spread's "+" is pressed: with nowhere to
+  // put a picture, there is no reason to be filming.
+  const camera = useCamera({ active: writing && railOpen && destinationId !== null, mode: captureMode, facing, locked: capturing });
+
+  // A new spread's page appears under its new id a render or two after Save.
+  useEffect(() => {
+    if (refocusPage === null) return;
+    const target = document.querySelector<HTMLButtonElement>(`[data-spread-id="${refocusPage}"] .writing-page__choose`);
+    if (!target) return;
+    target.focus({ preventScroll: true });
+    setRefocusPage(null);
+  });
+
+  // A full spread takes no more: the "+" disappears and the camera turns away.
+  const destinationCount = album?.find((entry) => entry.id === destinationId)?.media.length ?? 0;
+  useEffect(() => {
+    if (destinationId !== null && destinationId !== NEW_SPREAD_ID && destinationCount >= maxPerSpread && !capturing) setSelectedId(null);
+  }, [destinationId, destinationCount, maxPerSpread, capturing]);
 
   // Bring the destination into view when the camera comes on or the target
   // moves, so the viewfinder is never off-screen.
   useEffect(() => {
-    if (!camera.stream) return;
+    if (!camera.stream || destinationId === null) return;
     const spread = document.querySelector(`[data-spread-id="${destinationId}"]`);
     if (!spread) return;
     const box = spread.getBoundingClientRect();
@@ -200,8 +321,21 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     spread.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
   }, [camera.stream, destinationId]);
 
+  /**
+   * A capture or a page started the new spread: whatever else was aimed at
+   * the new spread — the camera, or the page being written — follows it, so a
+   * guest's photo and message stay together.
+   */
+  function followNewEntry(entryId: string) {
+    setSelectedId((current) => (current === NEW_SPREAD_ID ? entryId : current));
+    if (pageId === NEW_SPREAD_ID) {
+      moveDraft(NEW_PAGE_KEY, entryId);
+      setPageId(entryId);
+    }
+  }
+
   async function enqueue(capture: Capture) {
-    if (!deviceId) return;
+    if (!deviceId || destinationId === null) return;
     const isNew = destinationId === NEW_SPREAD_ID;
     const entryId = isNew ? newId(deviceId) : destinationId;
     const savedOnServer = entries?.some((entry) => entry.id === entryId) ?? false;
@@ -218,7 +352,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     };
     await uploads.enqueue(item);
     // The next shots go to the same new spread, until another is chosen.
-    if (isNew) setSelectedId(entryId);
+    if (isNew) followNewEntry(entryId);
     // Let the capture land in its mount before the viewfinder comes back.
     setReviewing(true);
     clearTimeout(reviewTimer.current);
@@ -232,9 +366,9 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
    * on this version even while it is still on its way.
    */
   async function savePage(strokes: Stroke[]) {
-    if (!deviceId) return;
-    const isNew = destinationId === NEW_SPREAD_ID;
-    const entryId = isNew ? newId(deviceId) : destinationId;
+    if (!deviceId || writingPageId === null) return;
+    const isNew = writingPageId === NEW_SPREAD_ID;
+    const entryId = isNew ? newId(deviceId) : writingPageId;
     const savedOnServer = entries?.some((entry) => entry.id === entryId) ?? false;
     const createdAt = Date.now();
     const item: QueueItem = {
@@ -256,15 +390,36 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     writeDraft(entryId, { strokes, unsaved: false, updatedAt: createdAt });
     if (isNew) {
       removeDraft(NEW_PAGE_KEY);
-      setSelectedId(entryId);
+      setSelectedId((current) => (current === NEW_SPREAD_ID ? entryId : current));
     }
+    // Saved, the page closes (owner request): it goes back to paper until it
+    // is tapped again, and keyboard focus returns to that page.
+    setPageId(null);
+    setRefocusPage(entryId);
     setAnnouncement(copy.save.saving);
   }
 
   // Nothing moves beside the page while the pen is down (DESIGN.md, Motion):
   // the viewfinder holds its frame until the pen lifts.
-  const onPenDown = () => previewVideo.current?.pause();
-  const onPenUp = () => void previewVideo.current?.play().catch(() => undefined);
+  // The album's playing video pauses too, and nothing makes sound under the pen.
+  const onPenDown = () => {
+    previewVideo.current?.pause();
+    holdPlayback('pen', true);
+  };
+  const onPenUp = () => {
+    void previewVideo.current?.play().catch(() => undefined);
+    holdPlayback('pen', false);
+  };
+
+  // Full screen, the viewer's copy is the one heard; the one in the mount waits.
+  useEffect(() => {
+    holdPlayback('viewer', viewing !== null);
+  }, [viewing]);
+
+  // A video playing in the album while another is recorded would be heard in it.
+  useEffect(() => {
+    holdPlayback('recording', recording !== null);
+  }, [recording]);
 
   // The iPad's own camera app takes over only when the live camera cannot
   // work at all — never merely because it is still starting.
@@ -409,21 +564,23 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
     void load(true);
   };
 
-  const toggleSelection = (id: string) => setSelectedId((current) => (current === id ? null : id));
+  // Mid-countdown or mid-recording the camera's target stays put.
+  const onAdd = (id: string) => {
+    if (!capturing) setSelectedId((current) => (current === id ? null : id));
+  };
+  const onLeave = (id: string) => {
+    if (!capturing) setSelectedId((current) => (current === id ? null : current));
+  };
 
   const livePreview =
-    camera.stream && writing
+    camera.stream && writing && destinationId !== null
       ? {
           spreadId: destinationId,
           preview: {
             stream: camera.stream,
-            mirrored: facing === 'user',
-            aspect: (() => {
-              const settings = camera.stream.getVideoTracks()[0]?.getSettings();
-              return settings?.width && settings?.height ? settings.width / settings.height : captureMode === 'photo' ? 4 / 3 : 16 / 9;
-            })(),
             reviewing,
             countdown: countdown ?? undefined,
+            locked: capturing,
             onVideo: (video: HTMLVideoElement | null) => {
               previewVideo.current = video;
             },
@@ -437,18 +594,28 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
       loadFailed={loadFailed}
       mode={writing ? 'write' : 'view'}
       intro={intro}
-      selectedId={selectedId}
-      onSelect={toggleSelection}
+      selectedId={destinationId}
+      onAdd={onAdd}
+      onLeave={onLeave}
+      maxItems={maxPerSpread}
+      onWrite={writing ? setPageId : undefined}
+      onRemove={writing ? setRemoving : undefined}
+      watermark={shownLook.watermark}
       live={livePreview}
       editor={
-        writing
+        writing && writingPageId !== null
           ? {
-              spreadId: destinationId,
-              entryId: destinationId === NEW_SPREAD_ID ? null : destinationId,
-              hasSavedVersion: entries?.some((entry) => entry.id === destinationId && entry.page !== null) ?? false,
+              spreadId: writingPageId,
+              entryId: writingPageId === NEW_SPREAD_ID ? null : writingPageId,
+              hasSavedVersion: entries?.some((entry) => entry.id === writingPageId && entry.page !== null) ?? false,
               onSave: savePage,
               onPenDown,
               onPenUp,
+              // Cancel: back to paper, and focus back on that page.
+              onClose: () => {
+                setRefocusPage(writingPageId);
+                setPageId(null);
+              },
             }
           : undefined
       }
@@ -481,12 +648,14 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
   }
 
   const destinationIndex = (album ?? []).findIndex((entry) => entry.id === destinationId);
-  const destination = destinationId === NEW_SPREAD_ID || destinationIndex < 0 ? copy.newSpread : `${copy.spread} ${destinationIndex + 1}`;
+  const destination =
+    destinationId === null ? null : destinationId === NEW_SPREAD_ID || destinationIndex < 0 ? copy.newSpread : `${copy.spread} ${destinationIndex + 1}`;
   const queueBytes = uploads.items.reduce((sum, item) => sum + item.original.size + (item.thumb?.size ?? 0) + (item.poster?.size ?? 0) + (item.strokes?.length ?? 0), 0);
   const notices: string[] = [];
   if (queueBytes > WARN_QUEUE_BYTES || uploads.items.length >= WARN_QUEUE_ITEMS || storageShare > WARN_STORAGE_SHARE) {
     notices.push(copy.camera.storageWarning);
   }
+  if (removeFailed) notices.push(removeFailed);
   if (camera.problem === 'refused') notices.push(copy.camera.cameraRefused);
   if (camera.problem === 'unavailable') notices.push(copy.camera.cameraUnavailable);
 
@@ -503,7 +672,7 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         timers={photoTimers}
         onTimer={setPhotoTimer}
         progress={progress}
-        busy={busy || camera.starting}
+        busy={busy || camera.starting || destinationId === null}
         onShutter={onShutter}
         destination={destination}
         status={{
@@ -513,6 +682,11 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         copy={copy.camera}
       />
       <div class="album writer__album">
+        <div class="writer__bar">
+          <button type="button" class="writer__settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
+            {copy.settings.open}
+          </button>
+        </div>
         {notices.length > 0 && (
           <div class="writer__notices" role="status">
             {notices.map((notice) => (
@@ -524,6 +698,8 @@ export default function GuestBook({ mode, deviceId, deviceLabel, facing = 'user'
         )}
         {albumView}
       </div>
+      {settingsOpen && <SettingsDialog look={look} onPreview={setPreviewLook} onSave={saveLook} onCancel={closeSettings} copy={copy.settings} />}
+      {removing && <ConfirmRemove item={removing} onConfirm={() => void confirmRemove()} onCancel={() => setRemoving(null)} copy={copy.remove} />}
       {/* Saves and capture problems, announced without moving focus. */}
       <p class="visually-hidden" aria-live="polite">
         {announcement}

@@ -50,7 +50,7 @@ The reference wireframe is **not** a photo grid beside a canvas. The cards are i
 └──────────────────────┘  └──────────────────────────────┘  └───┘
 ```
 
-The dots are a carousel — one mount holds several items. The far-right strip is a collapsible camera rail with a shutter.
+The numbers are a carousel — one mount holds up to six items; on the writer iPads a "+" after them aims the camera there. The far-right strip is a collapsible camera rail with a shutter.
 
 ---
 
@@ -107,6 +107,21 @@ CREATE TABLE canvases (
 CREATE INDEX idx_entries_created ON entries(created_at);
 CREATE INDEX idx_media_entry     ON media(entry_id, sort_order);
 CREATE INDEX idx_canvases_entry  ON canvases(entry_id, version DESC);
+
+-- migrations/0003_album_settings.sql (owner request after Phase 5)
+CREATE TABLE album_settings (
+  id          TEXT PRIMARY KEY,   -- made on the iPad
+  device_id   TEXT NOT NULL,
+  data        TEXT NOT NULL,      -- JSON: the look (src/lib/settings.ts)
+  created_at  INTEGER NOT NULL    -- server clock: the latest wins
+);
+
+-- migrations/0002_media_removals.sql (owner request after Phase 5)
+CREATE TABLE media_removals (
+  media_id    TEXT PRIMARY KEY REFERENCES media(id),
+  device_id   TEXT NOT NULL,      -- which iPad removed it
+  removed_at  INTEGER NOT NULL    -- epoch ms, server clock
+);
 ```
 
 ### Three properties this model exists to guarantee
@@ -114,6 +129,8 @@ CREATE INDEX idx_canvases_entry  ON canvases(entry_id, version DESC);
 **Concurrent writes cannot collide.** Every write is an `INSERT` of a new row with a device-prefixed ULID. Nothing updates a shared counter, index row, or position field. Two iPads writing in the same millisecond touch entirely disjoint rows and R2 keys, so no locking is needed anywhere.
 
 **Nothing is ever overwritten.** Saving a canvas inserts a new `version`, it does not update the previous one. An accidental "clear" is recoverable because the earlier version still exists. Display reads the highest version per entry.
+
+**Deleting hides; it never erases.** Removing a photo or video (see "Removing a photo or video") inserts a row into `media_removals`. The media row and its files stay, so the album simply stops showing it, and the owner can bring it back.
 
 **Drawings outlive their pixels.** `stroke_data` holds the vector strokes, not just the flattened PNG. The PNG is what visitors see; the strokes mean a drawing can be re-rendered at any resolution, edited, or rebuilt if the PNG is ever lost.
 
@@ -155,10 +172,13 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 | `PUT` | `/api/canvas/{id}` | **session** | Stream a canvas version's PNG into R2 |
 | `POST` | `/api/canvas` | **session** | Commit a canvas version: stroke JSON to D1, version number assigned |
 | `GET` | `/api/canvas?entryId=` | **session** | The latest version's stroke JSON, so a writer can carry on writing on that page |
+| `GET` | `/api/settings` | — | The album's look (colour, frame, paper, watermark, theme); the public album is drawn with it |
+| `POST` | `/api/settings` | **session** | Save a new look: a new row, never an update |
+| `DELETE` | `/api/media/{id}` | **session** | Take a photo or video out of the album: a row in `media_removals`; nothing is erased |
 | `GET` | `/api/stats` | **session** | Storage used, entry count — feeds the writer's gauge |
 | `GET` | `/api/files/{r2 key}` | — | Serve a stored photo, video, poster, thumbnail or page; byte ranges for video |
 
-**Deny by default.** `functions/api/_middleware.ts` refuses any request without a valid session unless it is one of the three public routes above, and refuses any write whose `Origin` is another site. Every write handler checks the session again before touching D1 or R2 — a handler is never the only lock, and the middleware is never the only lock either. The middleware sits in `functions/api/`, not `functions/`, so static pages never invoke a Function.
+**Deny by default.** `functions/api/_middleware.ts` refuses any request without a valid session unless it is one of the four public routes above, and refuses any write whose `Origin` is another site. Every write handler checks the session again before touching D1 or R2 — a handler is never the only lock, and the middleware is never the only lock either. The middleware sits in `functions/api/`, not `functions/`, so static pages never invoke a Function.
 
 **Uploads are two steps** (DECISIONS D15): each file streams straight into R2, then a small JSON commit writes the D1 row — only after confirming every file is stored. A saved item's files can never be replaced.
 
@@ -199,7 +219,7 @@ A **poster frame** is extracted client-side from the first frame — or a moment
 
 **The 15-second cap is checked on the file.** At commit the server reads the duration from the video's own header (`mvhd`, or `mehd` in a fragmented file) with a few small range reads; when the file states one, it overrules what the iPad claimed.
 
-**The viewfinder is the destination mount** (DECISIONS D18). The camera is on only while the rail is open, the iPad is signed in and the page is visible.
+**The viewfinder is the destination mount** (DECISIONS D18). The camera is on only while a spread's "+" is pressed, the rail is open, the iPad is signed in and the page is visible. It is shown unmirrored, as it is saved. The six-item limit per spread is enforced by the writer's interface (no "+" on a full spread), not refused by the server: a capture already on its way is never thrown away.
 
 ### Nothing is lost
 
@@ -212,6 +232,61 @@ A capture is not "saved" until storage confirms it. The sequence:
 5. Queued items retry automatically when connectivity returns.
 
 **Queue sizing caveat.** The IndexedDB queue shares the ~1 GB iOS browser budget. At 5 MB a video, a total wifi failure would take roughly 150–200 queued clips to fill it. The writer UI shows queue depth and a storage warning when pending uploads build up, so the problem surfaces during the wedding rather than after it.
+
+---
+
+## The album's look
+
+Owner request after Phase 5. **Settings** on a signed-in iPad chooses the album's colour, photo frame, writing paper, watermark and decoration (DESIGN.md, "The album's look"). There is one look for the whole album: both iPads and the public site. The owner relies on a person beside each iPad to keep guests out of Settings; the server only checks that the iPad is signed in.
+
+- **Stored as history.** `POST /api/settings` (session) inserts a row into `album_settings`. The newest row by server time is the look in use. Nothing is updated, so every earlier look can be brought back:
+
+  ```sql
+  SELECT id, device_id, datetime(created_at/1000,'unixepoch'), data FROM album_settings ORDER BY created_at DESC
+  ```
+
+  To restore a look, delete the rows newer than it.
+- **Only fixed values.** `src/lib/settings.ts` is shared by the server and the island. Every choice must be one from a fixed list, and the watermark is at most 24 characters with no control characters. Nothing a request sends becomes CSS, markup or a file name, and the watermark is only ever rendered as text.
+- **Public reads and caching.** `GET /api/settings` is public and cached for 30 s like the album, so a new look can take that long to reach visitors. Signed-in iPads read past the cache and check again every minute, so a look saved on one iPad reaches the other without a reload.
+- **Applied in CSS.** The island puts `data-leaf`, `data-frame`, `data-paper` and `data-theme` on `<html>`, and `components.css` does the rest. The watermark is a text element on each writing page, under the ink.
+- **No flash on return.** The look is kept in `localStorage`, and a few-line inline script in `layouts/Base.astro` applies it before first paint, so a returning visitor never sees the default colours flash. The cover still hydrates nothing.
+- **Before migration 0003 is applied,** the album shows the designed look and saving answers `503 migration_missing`.
+
+---
+
+## Removing a photo or video
+
+Owner request after Phase 5. On a writer iPad every saved photo or video on show has **Delete** just above its top right. It asks "Delete this photo?", and **Yes** takes the item out of the album on both iPads and the public site. The public copy is cached, so it may take up to 30 s to disappear there. Either iPad may delete any item.
+
+**Nothing is erased.** `DELETE /api/media/{id}` (session required) inserts one row into `media_removals`. The `media` row and its files in R2 stay:
+
+- `GET /api/entries` leaves removed items out.
+- `/api/stats` counts album items without them, but bytes still include their files.
+- The archive (Phase 6) must carry `media_removals` too.
+
+A deleted item's file URL keeps working for anyone who already has it, because the file is kept. The URLs are long random ids, not guessable.
+
+The album query falls back to showing everything if migration 0002 has not been applied yet. Code deployed before the migration therefore never breaks the album; deleting fails until the migration is in, and says so: the server answers `503 migration_missing`, and the iPad shows that message rather than "check the wifi".
+
+**Bringing an item back** (owner, from a terminal):
+
+```bash
+# What was deleted, newest first:
+npx wrangler d1 execute wedding-guestbook --remote --command \
+  "SELECT r.media_id, r.device_id, datetime(r.removed_at/1000,'unixepoch') AS removed, m.kind, m.entry_id,
+          '/api/files/' || m.r2_key AS file
+   FROM media_removals r JOIN media m ON m.id = r.media_id ORDER BY r.removed_at DESC"
+
+# Bring one back:
+npx wrangler d1 execute wedding-guestbook --remote --command \
+  "DELETE FROM media_removals WHERE media_id = 'ipad1-01…'"
+```
+
+`file` opens the deleted photo or video in a browser (prefix it with the site's address), so you can see which one it is before bringing it back. To bring back **everything** ever deleted: `DELETE FROM media_removals`. The same SQL also works in the Cloudflare dashboard: **D1 → the database → Console**.
+
+A restored item reappears in its spread even if that spread already holds six. The limit only stops new captures (no "+"); it never hides what is saved, so the spread then shows seven.
+
+(For the test database add `--env preview` and use `wedding-guestbook-test`.)
 
 ---
 
@@ -238,7 +313,7 @@ Tools: pen, pencil, eraser, three inks, undo, clear, save.
 - The saved PNG is 2000 × 1500 with a **transparent** background — ink only; the album supplies the paper.
 - **Save** goes through the same IndexedDB queue as a photo: create the entry if new → PUT the PNG → POST the strokes. Every save is a new version of the **whole page**, never a delta.
 - **Drafts.** The page in progress is kept in `localStorage` (`guestbook-page:{entryId}`) after every stroke, so a reload or a crash costs nothing. After Save it is kept, marked saved, until the server confirms that version; then it is removed. `localStorage` rather than IndexedDB because it is synchronous — the stroke is written before the next event can be lost — and a page's strokes are small.
-- **Carrying on.** Selecting a spread whose page already has a saved version fetches that version's strokes and continues from them. Unsaved strokes on this iPad always win; otherwise the newer of this iPad's own last save and the server's latest. If the strokes cannot be fetched and this iPad has no copy, the page is not writable until they can be — a new version without them would hide the saved writing from the album.
+- **Carrying on.** Opening (tapping) a page that already has a saved version fetches that version's strokes and continues from them. Unsaved strokes on this iPad always win; otherwise the newer of this iPad's own last save and the server's latest. If the strokes cannot be fetched and this iPad has no copy, the page is not writable until they can be — a new version without them would hide the saved writing from the album.
 - While a pointer is down, the live camera preview beside the page pauses (CLAUDE.md: nothing animates near the canvas while drawing).
 
 `signature_pad` (MIT) is the documented swap-in fallback if the Pencil feel disappoints on real hardware.

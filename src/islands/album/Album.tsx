@@ -1,4 +1,5 @@
 import type { AlbumCopy } from '../../config/site';
+import type { AlbumLook } from '../../lib/settings';
 import type { AlbumEntry, AlbumMedia, AlbumMode } from '../../lib/types';
 import type { LivePreview } from './MediaMount';
 import { Spread, type PageEditor } from './Spread';
@@ -12,8 +13,18 @@ interface Props {
   loadFailed: boolean;
   mode: AlbumMode;
   intro: string;
+  /** Where the camera's next capture lands, if anywhere. */
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onAdd: (id: string) => void;
+  onLeave: (id: string) => void;
+  /** A spread holds at most this many photos and videos. */
+  maxItems: number;
+  /** Write mode: a page was tapped. */
+  onWrite?: (id: string) => void;
+  /** Write mode: a saved photo or video's "Delete" was pressed. */
+  onRemove?: (item: AlbumMedia) => void;
+  /** The owner's mark on every page (Settings). */
+  watermark?: AlbumLook['watermark'];
   /** The live camera, and the spread it is shown in. */
   live?: { spreadId: string; preview: LivePreview };
   /** The writer's destination page, and how it saves. */
@@ -26,9 +37,11 @@ interface Props {
   copy: AlbumCopy;
 }
 
-export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
-  const shared = { mode, onOpen, onRetry, onDiscard, copy };
-  const loaded = entries ?? [];
+export function Album({ entries, loadFailed, mode, intro, selectedId, onAdd, onLeave, maxItems, onWrite, onRemove, watermark, live, editor, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+  const shared = { mode, onOpen, onRetry, onDiscard, onRemove, watermark, copy };
+  // On the public album a spread left with nothing in it — every item deleted,
+  // no page written — is not shown. The iPads keep it, to be filled again.
+  const loaded = (entries ?? []).filter((entry) => mode === 'write' || entry.media.length > 0 || entry.page !== null);
   const showBook = entries !== null && (loaded.length > 0 || mode === 'write');
   const status = loadFailed ? copy.loadFailed : entries === null ? copy.loading : loaded.length === 0 && mode === 'view' ? copy.emptyAlbum : null;
 
@@ -40,6 +53,10 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
         <defs>
           <pattern id="writing-rules" width="8" height="32" patternUnits="userSpaceOnUse">
             <rect y="31" width="8" height="1" fill="currentColor" />
+          </pattern>
+          {/* The "Dotted" paper (Settings); its colour is set in components.css. */}
+          <pattern id="writing-dots" width="16" height="16" patternUnits="userSpaceOnUse">
+            <circle cx="8" cy="8" r="1.2" />
           </pattern>
         </defs>
       </svg>
@@ -60,7 +77,10 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               spreadId={entry.id}
               name={`${copy.spread} ${i + 1}`}
               selected={selectedId === entry.id}
-              onSelect={() => onSelect(entry.id)}
+              onAdd={() => onAdd(entry.id)}
+              onLeave={() => onLeave(entry.id)}
+              canAdd={entry.media.length < maxItems}
+              onWrite={onWrite && (() => onWrite(entry.id))}
               live={live?.spreadId === entry.id ? live.preview : undefined}
               editor={editor?.spreadId === entry.id ? editor : undefined}
               justSaved={justSaved?.has(entry.id)}
@@ -74,7 +94,10 @@ export function Album({ entries, loadFailed, mode, intro, selectedId, onSelect, 
               spreadId={NEW_SPREAD_ID}
               name={copy.newSpread}
               selected={selectedId === NEW_SPREAD_ID}
-              onSelect={() => onSelect(NEW_SPREAD_ID)}
+              onAdd={() => onAdd(NEW_SPREAD_ID)}
+              onLeave={() => onLeave(NEW_SPREAD_ID)}
+              canAdd
+              onWrite={onWrite && (() => onWrite(NEW_SPREAD_ID))}
               live={live?.spreadId === NEW_SPREAD_ID ? live.preview : undefined}
               editor={editor?.spreadId === NEW_SPREAD_ID ? editor : undefined}
               {...shared}

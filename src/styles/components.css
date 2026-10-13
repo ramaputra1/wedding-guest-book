@@ -223,9 +223,10 @@
  * Media mount — a print held by four photo corners
  * ------------------------------------------------------------------------- */
 
-/* The mount is a fixed 4:3 space, so every spread lines up. The print inside
-   keeps its own shape (.mount__frame): a landscape photo spans the width, a
-   portrait one stands upright at full height. Nothing is cropped. */
+/* The mount is a fixed 4:3 landscape space, so every spread lines up, and the
+   print always fills it (owner request): a portrait photo or a 16:9 video is
+   trimmed to the box on the page only. The saved file is whole, and the
+   public album's viewer shows all of it. */
 .mount {
   position: relative;
   display: grid;
@@ -240,27 +241,21 @@
   font: inherit;
 }
 
-button.mount {
+.mount[data-addable='true'] {
   cursor: pointer;
 }
 
-button.mount--open {
-  cursor: zoom-in;
-}
-
-/* Its aspect ratio is the item's own, set inline from the photo's size. */
 .mount__frame {
   position: relative;
   inline-size: 100%;
+  aspect-ratio: 4 / 3;
 }
 
-.mount__frame--tall {
-  inline-size: auto;
-  block-size: 100%;
-}
-
+/* pan-y: the page still scrolls up and down over a mount, while a sideways
+   swipe is left to the carousel (useSwipe). */
 .mount-wrap {
   position: relative;
+  touch-action: pan-y;
 }
 
 /* The print: photographic paper with a narrow white border, lifted by the
@@ -287,10 +282,88 @@ button.mount--open {
   opacity: 0;
 }
 
-/* The front camera is shown as a mirror, which is what people expect to see.
-   The photo taken is not mirrored. */
-.mount__live--mirrored {
-  transform: scaleX(-1);
+/* Writer iPads: a saved video plays in its mount; a tap on it plays or pauses. */
+.mount__media--inline {
+  display: block;
+  cursor: pointer;
+}
+
+/* "Delete" (writer iPads, owner request): the word alone, underlined, just
+   above the print's top right — on the leaf, never over the picture, and with
+   no plate behind it. Quiet at rest (--on-leaf-soft, 5.6:1); brighter under
+   the pointer. Not --warn (that means "not saved") and not --brass (state).
+   The target is 44 px tall; the word sits at its foot, beside the print. */
+/* "Cancel" stands in the same place while the camera is aimed here. */
+.mount__delete,
+.mount__cancel {
+  position: absolute;
+  z-index: 1;
+  inset-block-end: calc(100% + var(--space-1));
+  inset-inline-end: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding: 0;
+  padding-block-end: var(--space-1);
+  border: 0;
+  background: none;
+  color: var(--on-leaf-soft);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  line-height: var(--leading-ui);
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-decoration-thickness: var(--rule-width);
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+  transition: color var(--duration-state) var(--ease);
+}
+
+.mount__delete:hover,
+.mount__cancel:hover {
+  color: var(--on-leaf);
+}
+
+/* Cancel above an aimed mount: the word in --on-leaf over a --warn
+   underline — the same warn mark as the page's Cancel, so the two read as
+   one action. */
+.mount__cancel {
+  color: var(--on-leaf);
+  text-decoration-color: var(--warn);
+  text-decoration-thickness: var(--focus-width);
+}
+
+/* Expand (public album, owner request): opens the photo or video full
+   screen. Bottom right of the print, on the same --leaf plate as the
+   duration badge opposite it, inside a full 44 px target. A tap anywhere
+   else on a photo does nothing; on a video it plays or pauses. */
+.mount__expand {
+  position: absolute;
+  inset-block-end: var(--space-1);
+  inset-inline-end: calc(var(--space-5) + var(--space-1));
+  display: grid;
+  place-items: center;
+  inline-size: var(--space-7);
+  block-size: var(--space-7);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--on-leaf);
+  cursor: zoom-in;
+}
+
+.mount__expand svg {
+  box-sizing: content-box;
+  padding: var(--space-1);
+  border-radius: var(--radius-mount);
+  background-color: var(--leaf);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* A video looks like any other print; only this badge says it moves. */
@@ -344,13 +417,13 @@ button.mount--open {
 }
 
 /* Selected: brass corners and a brass hairline beneath. Two signals, so the
-   state never rests on colour alone; aria-pressed carries it to assistive
-   technology. No glow, no outline, no scale. */
-.mount[aria-pressed='true'] .corner {
+   state never rests on colour alone; the pressed "+" beneath carries it to
+   assistive technology. No glow, no outline, no scale. */
+.mount[data-selected='true'] .corner {
   background-color: var(--brass);
 }
 
-.mount[aria-pressed='true'] .mount__frame::after {
+.mount[data-selected='true'] .mount__frame::after {
   content: '';
   position: absolute;
   inset-inline: 0;
@@ -423,34 +496,41 @@ button.mount--open {
 }
 
 /* ---------------------------------------------------------------------------
- * Carousel dots
+ * Carousel numbers, and the writer's "+" (owner request: numbers, not dots)
  * ------------------------------------------------------------------------- */
 
-.dots {
+.numbers {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   min-block-size: var(--space-7);
   margin-block-start: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-ui);
 }
 
 /* Folded, an empty row would only push the page away from its mount. */
-.dots:empty {
+.numbers:empty {
   display: none;
 }
 
 /* Wide, the row is always present, so single- and multi-item spreads line up. */
 @media (orientation: landscape) and (min-width: 48rem) {
-  .dots {
+  .numbers {
     margin-block-start: var(--space-4);
   }
 
-  .dots:empty {
+  .numbers:empty {
     display: flex;
   }
 }
 
-/* A full-size touch target around a small drawn dot. */
-.dots__dot {
+/* Full-size touch targets around a small numeral or plus sign. */
+.numbers__item,
+.numbers__add {
+  position: relative;
   display: grid;
   place-items: center;
   inline-size: var(--space-7);
@@ -458,20 +538,30 @@ button.mount--open {
   padding: 0;
   border: 0;
   background: none;
+  color: var(--on-leaf-soft);
+  font: inherit;
   cursor: pointer;
 }
 
-.dots__dot::before {
-  content: '';
-  inline-size: var(--space-2);
-  block-size: var(--space-2);
-  border: var(--rule-width) solid var(--on-leaf-soft);
-  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
-  border-radius: 50%;
+.numbers__add {
+  font-size: var(--step-1);
 }
 
-.dots__dot[aria-current='true']::before {
-  border-color: var(--brass);
+/* The item on show, and a pressed "+": brighter, heavier, and underlined in
+   brass — the same state mark as the rail's choices, never colour alone. */
+.numbers__item[aria-current='true'],
+.numbers__add[aria-pressed='true'] {
+  color: var(--on-leaf);
+  font-weight: 600;
+}
+
+.numbers__item[aria-current='true']::after,
+.numbers__add[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
   background-color: var(--brass);
 }
 
@@ -501,6 +591,21 @@ button.mount--open {
 
 .writing-page__ink {
   object-fit: contain;
+}
+
+/* Writer iPads: the sheet itself is the button that opens it for writing. */
+.writing-page__choose {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+}
+
+.writing-page__choose:focus-visible {
+  outline-offset: calc(var(--focus-width) * -1);
 }
 
 /* ---------------------------------------------------------------------------
@@ -584,6 +689,16 @@ button.mount--open {
   cursor: pointer;
 }
 
+/* Undo and Redo: icons (owner request), named for assistive technology and
+   titled for a pointer that hovers. Line icons in the tools' own colour. */
+.writing-tool--icon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* The chosen tool: brighter, heavier and underlined in brass, as the rail's
    choices are — never colour alone. */
 .writing-tool[aria-pressed='false'] {
@@ -608,11 +723,44 @@ button.mount--open {
   cursor: default;
 }
 
-/* Save is the one action that matters: it carries a hairline edge until the
-   page is saved, then rests as plain "Saved". */
-.writing-tool--save:enabled {
-  border: var(--rule-width) solid var(--on-leaf-soft);
+/* Cancel, Save and Saved are words, underlined — no box, no fill, no radius
+   — like "Cancel" above an aimed mount (owner request). The underline's
+   colour tells them apart; the words stay readable on the leaf. */
+.writing-tool--cancel,
+.writing-tool--save {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  text-decoration: underline;
+  text-decoration-thickness: var(--focus-width);
+  text-underline-offset: var(--space-1);
+}
+
+/* Cancel leaves without saving: the --warn underline, words in --on-leaf
+   (--warn as small text would fall short of AA — "--warn marks, it does not write"). */
+.writing-tool--cancel {
+  color: var(--on-leaf);
+  text-decoration-color: var(--warn);
+}
+
+/* Save, with something to save: the one strong word — --on-leaf, semibold. */
+.writing-tool--save[data-state='save'] {
+  color: var(--on-leaf);
   font-weight: 600;
+  text-decoration-color: var(--on-leaf);
+}
+
+/* Saved is a confirmation, the state --brass exists for (5.4:1 on the leaf). */
+.writing-tool--save[data-state='saved'] {
+  color: var(--brass);
+  font-weight: 600;
+  text-decoration-color: var(--brass);
+}
+
+/* Nothing written yet: quiet, and only a hairline. */
+.writing-tool--save[data-state='idle'] {
+  text-decoration-color: var(--on-leaf-soft);
+  text-decoration-thickness: var(--rule-width);
 }
 
 /* An ink: a full-size touch target around a small drawn well of ink on a
@@ -918,19 +1066,27 @@ button.mount--open {
   cursor: progress;
 }
 
-/* While recording the face becomes the rounded "stop" square: a change of
-   shape, so the state is never carried by the ring alone. */
+/* While recording the face becomes the rounded "stop" square, and both it
+   and the clock ring turn recording red (owner request) — the colour every
+   camera uses, so nobody has to wonder whether it is filming. Shape and
+   colour together: the state never rests on one signal. */
 .shutter[data-recording='true'] .shutter__face {
   inline-size: 45%;
   block-size: 45%;
   border-radius: var(--radius-button);
+  background-color: var(--recording);
+}
+
+.shutter[data-recording='true'] .shutter__ring-time {
+  stroke: var(--recording);
 }
 
 .shutter__face {
   transition:
     inline-size var(--duration-state) var(--ease),
     block-size var(--duration-state) var(--ease),
-    border-radius var(--duration-state) var(--ease);
+    border-radius var(--duration-state) var(--ease),
+    background-color var(--duration-state) var(--ease);
 }
 
 /* Video mode: the ring that depletes over the 15 seconds. */
@@ -1094,6 +1250,79 @@ button.mount--open {
   cursor: pointer;
 }
 
+/* "Delete this photo?" — Yes / No. Solid backdrop, like the viewer (no blur);
+   the item itself is shown, so the question is never about the wrong one. */
+.confirm {
+  inline-size: min(100% - var(--page-margin) * 2, calc(var(--space-10) * 3));
+  /* The base reset zeroes margins; a modal dialog centres itself with auto. */
+  margin: auto;
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-paper);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.confirm::backdrop {
+  background-color: var(--leaf-edge);
+}
+
+.confirm__item {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border: var(--space-2) solid var(--photo-paper);
+  border-radius: var(--radius-mount);
+}
+
+.confirm__question {
+  margin-block: var(--space-5) var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--step-2);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+.confirm__detail {
+  margin: 0;
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+}
+
+.confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-block-start: var(--space-6);
+}
+
+.confirm__no,
+.confirm__yes {
+  min-inline-size: var(--space-8);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-button);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm__no {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  background: none;
+  color: var(--on-leaf);
+}
+
+.confirm__yes {
+  border: 0;
+  background-color: var(--photo-paper);
+  color: var(--ink);
+}
+
 .rail__destination {
   justify-self: end;
   color: var(--on-leaf);
@@ -1208,6 +1437,378 @@ button.mount--open {
 
 /* The script already skips the lift under reduced motion; this covers a
    preference changed after the page has loaded. */
+/* ===========================================================================
+ * The album's look — chosen in Settings, one for the whole album
+ * (src/lib/settings.ts). <html> carries data-leaf, data-frame, data-paper and
+ * data-theme; the album colours themselves are tokens (tokens.css).
+ * ======================================================================== */
+
+/* --- Photo frame --------------------------------------------------------- */
+
+/* Without corners the selected mount keeps its brass rule beneath, and the
+   pressed "+" — the state never rests on one signal. */
+[data-frame='plain'] .corner,
+[data-frame='polaroid'] .corner,
+[data-frame='borderless'] .corner {
+  display: none;
+}
+
+/* An instant print: the deeper margin at the foot is where you would write. */
+[data-frame='polaroid'] .mount__print {
+  padding: var(--space-2) var(--space-2) var(--space-6);
+}
+
+[data-frame='borderless'] .mount__print {
+  padding: 0;
+  background-color: var(--leaf-edge);
+}
+
+[data-frame='borderless'] .mount__media,
+[data-frame='borderless'] .mount__live {
+  border-radius: var(--radius-mount);
+}
+
+/* --- Writing paper ------------------------------------------------------- */
+
+/* The pages' PNGs are ink only, so a new paper applies to every page ever written. */
+[data-paper='plain'] .writing-page__rules,
+[data-paper='white'] .writing-page__rules {
+  display: none;
+}
+
+[data-paper='white'] .writing-page {
+  background-color: var(--photo-paper);
+}
+
+/* The same ruling <svg>, filled with the dot pattern instead (Album.tsx). */
+[data-paper='dotted'] .writing-page__rules rect {
+  fill: url(#writing-dots);
+}
+
+.album__defs #writing-dots circle {
+  fill: var(--writing-dot);
+}
+
+/* --- Watermark ----------------------------------------------------------- */
+
+/* Sized to the page (container units), so it sits the same on an iPad, a
+   phone and a printout. Under the ink: later layers draw over it, and it
+   takes no taps. It is a mark, like a monogram on stationery, not content:
+   hidden from assistive technology, and faint on purpose. */
+.writing-page {
+  container-type: inline-size;
+}
+
+.writing-page__watermark {
+  position: absolute;
+  max-inline-size: 60%;
+  color: var(--watermark);
+  font-family: var(--font-display);
+  font-size: 4.2cqi;
+  font-style: italic;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.writing-page__watermark[data-position^='top'] { inset-block-start: 4.5cqi; }
+.writing-page__watermark[data-position^='bottom'] { inset-block-end: 4.5cqi; }
+.writing-page__watermark[data-position$='-start'] { inset-inline-start: 5cqi; text-align: start; }
+.writing-page__watermark[data-position$='-end'] { inset-inline-end: 5cqi; text-align: end; }
+
+.writing-page__watermark[data-position='top'],
+.writing-page__watermark[data-position='bottom'] {
+  inset-inline: 0;
+  max-inline-size: none;
+  margin-inline: auto;
+  inline-size: fit-content;
+  text-align: center;
+}
+
+/* In the middle it is a true watermark: larger, centred, across the page. */
+.writing-page__watermark[data-position='center'] {
+  inset: 0;
+  inline-size: fit-content;
+  block-size: fit-content;
+  max-inline-size: 80%;
+  margin: auto;
+  font-size: 9cqi;
+  text-align: center;
+}
+
+/* --- Theme: ornaments on the leaf ----------------------------------------- */
+
+/* A faint repeating pattern on the album's leaf, as wallpaper is: --on-leaf
+   at 12%, drawn through a mask so its colour stays a token. It sits just
+   above the leaf's own colour (.album is a stacking context) and under
+   everything with a surface — mounts, pages. Never on a print or a page,
+   never animated, and "None" is the designed album. */
+html:not([data-theme='none'])[data-theme] .album::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--ornament);
+  -webkit-mask-image: var(--ornament-tile);
+  mask-image: var(--ornament-tile);
+  -webkit-mask-size: var(--ornament-size);
+  mask-size: var(--ornament-size);
+  pointer-events: none;
+}
+
+[data-theme='botanical'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280' viewBox='0 0 280 280'%3E %3Cg fill='none' stroke='%23000' stroke-width='1.6' stroke-linecap='round'%3E %3Cpath d='M30 250 C 55 200 80 170 120 150'/%3E%3Cpath d='M190 40 C 210 75 235 95 262 105'/%3E%3C/g%3E %3Cg fill='%23000'%3E %3Cellipse cx='52' cy='213' rx='10' ry='4' transform='rotate(-58 52 213)'/%3E %3Cellipse cx='63' cy='200' rx='10' ry='4' transform='rotate(-8 63 200)'/%3E %3Cellipse cx='80' cy='181' rx='10' ry='4' transform='rotate(-62 80 181)'/%3E %3Cellipse cx='93' cy='169' rx='10' ry='4' transform='rotate(-12 93 169)'/%3E %3Cellipse cx='110' cy='156' rx='9' ry='3.6' transform='rotate(-48 110 156)'/%3E %3Cellipse cx='204' cy='64' rx='9' ry='3.6' transform='rotate(28 204 64)'/%3E %3Cellipse cx='214' cy='79' rx='9' ry='3.6' transform='rotate(78 214 79)'/%3E %3Cellipse cx='233' cy='90' rx='9' ry='3.6' transform='rotate(30 233 90)'/%3E %3Cellipse cx='245' cy='101' rx='9' ry='3.6' transform='rotate(82 245 101)'/%3E %3Ccircle cx='150' cy='232' r='2'/%3E%3Ccircle cx='158' cy='224' r='1.4'/%3E%3Ccircle cx='118' cy='60' r='1.6'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 280px; }
+[data-theme='confetti'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='%23000'%3E %3Crect x='20' y='24' width='9' height='3' rx='1' transform='rotate(25 24 25)'/%3E %3Crect x='120' y='16' width='9' height='3' rx='1' transform='rotate(-40 124 17)'/%3E %3Crect x='70' y='80' width='9' height='3' rx='1' transform='rotate(70 74 81)'/%3E %3Crect x='150' y='110' width='9' height='3' rx='1' transform='rotate(10 154 111)'/%3E %3Crect x='30' y='140' width='9' height='3' rx='1' transform='rotate(-65 34 141)'/%3E %3Crect x='100' y='158' width='9' height='3' rx='1' transform='rotate(45 104 159)'/%3E %3Ccircle cx='60' cy='40' r='2.2'/%3E%3Ccircle cx='160' cy='60' r='2'/%3E%3Ccircle cx='20' cy='92' r='2'/%3E %3Ccircle cx='120' cy='120' r='2.4'/%3E%3Ccircle cx='70' cy='170' r='1.8'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 180px; }
+[data-theme='starlight'] { --ornament-tile: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cg fill='%23000'%3E%3Cpath d='M40 42 L42.0 48.0 L48 50 L42.0 52.0 L40 58 L38.0 52.0 L32 50 L38.0 48.0 Z'/%3E%3Cpath d='M170 25 L171.25 28.75 L175 30 L171.25 31.25 L170 35 L168.75 31.25 L165 30 L168.75 28.75 Z'/%3E%3Cpath d='M120 120 L122.5 127.5 L130 130 L122.5 132.5 L120 140 L117.5 132.5 L110 130 L117.5 127.5 Z'/%3E%3Cpath d='M30 175 L31.25 178.75 L35 180 L31.25 181.25 L30 185 L28.75 181.25 L25 180 L28.75 178.75 Z'/%3E%3Cpath d='M195 168 L196.75 173.25 L202 175 L196.75 176.75 L195 182 L193.25 176.75 L188 175 L193.25 173.25 Z'/%3E%3Ccircle cx='90' cy='30' r='1.4'/%3E%3Ccircle cx='70' cy='100' r='1.2'/%3E%3Ccircle cx='190' cy='100' r='1.4'/%3E%3Ccircle cx='150' cy='200' r='1.2'/%3E%3Ccircle cx='10' cy='120' r='1.2'/%3E%3C/g%3E%3C/svg%3E"); --ornament-size: 220px; }
+
+/* --- Settings (writer iPads) -------------------------------------------- */
+
+.writer__bar {
+  display: flex;
+  justify-content: flex-end;
+  max-inline-size: var(--album-max);
+  margin-inline: auto;
+  padding-inline: var(--page-margin);
+}
+
+/* Words, underlined, like "Delete": a quiet control on the leaf. */
+.writer__settings {
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--on-leaf-soft);
+  font-family: var(--font-ui);
+  font-size: var(--step--1);
+  text-decoration: underline;
+  text-decoration-thickness: var(--rule-width);
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+}
+
+.writer__settings:hover {
+  color: var(--on-leaf);
+}
+
+/* A sheet at the side, not a centred box: the album beside it shows every
+   choice as it is made. The backdrop is clear for the same reason — and
+   still blocks the album underneath, as a modal must. */
+.settings {
+  inline-size: min(100%, 26rem);
+  max-inline-size: none;
+  block-size: 100svh;
+  max-block-size: none;
+  margin: 0;
+  margin-inline-start: auto;
+  padding: 0;
+  border: 0;
+  border-inline-start: var(--rule-width) solid var(--leaf-edge);
+  background-color: var(--leaf-raised);
+  color: var(--on-leaf);
+  font-family: var(--font-ui);
+  line-height: var(--leading-ui);
+}
+
+.settings::backdrop {
+  background: none;
+}
+
+.settings[open] {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.settings__body {
+  display: grid;
+  gap: var(--space-6);
+  align-content: start;
+  overflow-y: auto;
+  padding: var(--space-6);
+  overscroll-behavior: contain;
+}
+
+.settings__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 400;
+  line-height: var(--leading-tight);
+}
+
+.settings__intro,
+.settings__hint {
+  margin: 0;
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+}
+
+.settings__group {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.settings__legend {
+  margin-block-end: var(--space-2);
+  padding: 0;
+  font-weight: 600;
+}
+
+.settings__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+}
+
+/* Each choice: a native radio, invisible over its label, so arrow keys work.
+   The chosen one is brighter, heavier and underlined in brass, as the rail's
+   choices are. */
+.settings__choice {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-inline-size: var(--space-7);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  color: var(--on-leaf-soft);
+  font-size: var(--step--1);
+  cursor: pointer;
+}
+
+.settings__choice input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.settings__choice:has(input:checked) {
+  color: var(--on-leaf);
+  font-weight: 600;
+}
+
+.settings__choice:has(input:checked)::after {
+  content: '';
+  position: absolute;
+  inset-inline: var(--space-3);
+  inset-block-end: var(--space-2);
+  block-size: var(--rule-width);
+  background-color: var(--brass);
+}
+
+.settings__choice:has(input:focus-visible) {
+  outline: var(--focus-width) solid var(--brass);
+  outline-offset: calc(var(--space-1) * -1);
+}
+
+/* An album colour: a disc of that colour (its own data-leaf sets --leaf),
+   ringed so even the darkest shows on the sheet; the chosen one in brass. */
+.settings__swatch {
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  /* A circle is geometry, not a radius choice; --radius-pill stays the shutter's. */
+  border-radius: 50%;
+  background-color: var(--leaf);
+  box-shadow: 0 0 0 var(--rule-width) var(--on-leaf-soft);
+}
+
+.settings__choice--swatch {
+  grid-template-rows: auto auto;
+  gap: var(--space-1);
+  padding-block: var(--space-1);
+}
+
+.settings__choice--swatch:has(input:checked)::after {
+  display: none;
+}
+
+.settings__choice--swatch:has(input:checked) .settings__swatch {
+  box-shadow: 0 0 0 var(--focus-width) var(--brass);
+}
+
+/* The seven watermark places, laid out as they sit on the page. */
+.settings__places {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-areas:
+    'top-start top top-end'
+    '. center .'
+    'bottom-start bottom bottom-end';
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-paper);
+  background-color: var(--leaf);
+}
+
+.settings__places .settings__choice {
+  padding-inline: var(--space-1);
+  text-align: center;
+}
+
+.settings__input {
+  inline-size: 100%;
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-3);
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  border-radius: var(--radius-button);
+  background-color: var(--leaf);
+  color: var(--on-leaf);
+  font: inherit;
+}
+
+.settings__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.settings__problem {
+  margin: 0;
+  padding-inline-start: var(--space-3);
+  border-inline-start: var(--focus-width) solid var(--warn);
+  color: var(--on-leaf);
+  font-size: var(--step--1);
+}
+
+.settings__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6) calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  border-block-start: var(--rule-width) solid var(--leaf-edge);
+}
+
+.settings__cancel,
+.settings__save {
+  min-inline-size: var(--space-8);
+  min-block-size: var(--space-7);
+  padding-inline: var(--space-5);
+  border-radius: var(--radius-button);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settings__cancel {
+  border: var(--rule-width) solid var(--on-leaf-soft);
+  background: none;
+  color: var(--on-leaf);
+}
+
+.settings__save {
+  border: 0;
+  background-color: var(--photo-paper);
+  color: var(--ink);
+}
+
+.settings__save:disabled {
+  cursor: progress;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lift-ready .album,
   .lifted .hero__cover {

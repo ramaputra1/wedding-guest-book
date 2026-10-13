@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AlbumCopy } from '../../config/site';
 import type { AlbumMedia, AlbumMode } from '../../lib/types';
+import { useSwipe } from '../hooks/useSwipe';
+import { registerVideo, toggleByGuest } from './playback';
 import { PhotoCorners } from './PhotoCorners';
 
 /** The live camera, shown in the mount where the next capture will land. */
 export interface LivePreview {
+  /**
+   * Never mirrored, not even the front camera: the guest sees exactly the
+   * picture that will be saved (owner request).
+   */
   stream: MediaStream;
-  /** The front camera is shown mirrored, as people expect; the photo itself is not. */
-  mirrored: boolean;
-  /** Width ÷ height of the camera frame. */
-  aspect: number;
   /**
    * Just captured: show the new item for a moment. The camera stays mounted
    * underneath, invisible, so a quick second press of the shutter still has
@@ -18,6 +20,8 @@ export interface LivePreview {
   reviewing: boolean;
   /** Seconds left on the photo self-timer, shown large so guests know when to smile. */
   countdown?: number;
+  /** A countdown or a recording is under way: the camera's spread cannot change. */
+  locked: boolean;
   onVideo: (video: HTMLVideoElement | null) => void;
 }
 
@@ -26,8 +30,16 @@ interface Props {
   mode: AlbumMode;
   /** "Spread 3" — the mount's accessible name. */
   spreadName: string;
+  /** Write mode: this mount is where the camera's next capture lands. */
   selected: boolean;
-  onSelect: () => void;
+  /** Write mode: the "+" was pressed — make this the destination, or stop being it. */
+  onAdd: () => void;
+  /** Write mode: a number was chosen here while the camera was aimed at it. */
+  onLeave: () => void;
+  /** Write mode: room for another item (a spread holds at most `maxItems`). */
+  canAdd: boolean;
+  /** Write mode: "Delete" was pressed on a saved item. */
+  onRemove?: (item: AlbumMedia) => void;
   live?: LivePreview;
   /** A capture in this mount was just confirmed saved: the corners flash brass. */
   justSaved?: boolean;
@@ -45,15 +57,69 @@ export function formatDuration(ms: number): string {
 
 // The mount is half a spread wide on a wide screen, nearly full width when folded.
 const MOUNT_SIZES = '(orientation: landscape) and (min-width: 48rem) 40vw, 90vw';
-const CELL_RATIO = 4 / 3;
+
+function Duration({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
+  if (item.kind !== 'video' || item.durationMs === undefined) return null;
+  return (
+    <span class="mount__duration">
+      <span aria-hidden="true">{formatDuration(item.durationMs)}</span>
+      <span class="visually-hidden">{`${copy.video}, ${Math.round(item.durationMs / 1000)} ${copy.seconds}`}</span>
+    </span>
+  );
+}
+
+type Playback = 'paused' | 'playing';
 
 /**
- * The print keeps its own shape inside the mount's 4:3 space: a landscape
- * photo fills the width, a portrait one stands upright at full height. Nothing
- * is cropped, and every spread still lines up.
+ * A saved video in its mount, looping, always with sound (owner requests):
+ * on the writer iPads it plays by itself, on the public album a tap plays it
+ * (playback.ts keeps it to one at a time). There is no Play / Pause plate: a
+ * tap on the video plays or pauses it, and so do Enter and Space when it has
+ * keyboard focus — sound that starts on its own must stay stoppable
+ * (WCAG 1.4.2).
  */
-function frameShape(ratio: number): { class: string; aspect: string } {
-  return { class: ratio < CELL_RATIO ? 'mount__frame mount__frame--tall' : 'mount__frame', aspect: String(ratio) };
+function InlineVideo({ item, autoplay, copy }: { item: AlbumMedia; autoplay: boolean; copy: AlbumCopy }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [state, setState] = useState<Playback>('paused');
+  useEffect(() => {
+    const element = video.current;
+    if (!element) return;
+    const sync = () => setState(element.paused ? 'paused' : 'playing');
+    const events = ['play', 'pause'] as const;
+    for (const name of events) element.addEventListener(name, sync);
+    const unregister = registerVideo(element, { autoplay });
+    return () => {
+      for (const name of events) element.removeEventListener(name, sync);
+      unregister();
+    };
+  }, [item.fullSrc, autoplay]);
+
+  const toggle = () => video.current && toggleByGuest(video.current);
+  const action = state === 'playing' ? copy.playback.pause : copy.playback.play;
+  return (
+    <span class="mount__print">
+      <video
+        ref={video}
+        class="mount__media mount__media--inline"
+        src={item.fullSrc}
+        poster={item.posterSrc ?? item.src}
+        // A keyboard user reaches it and hears what a press will do.
+        tabIndex={0}
+        aria-label={`${item.alt}. ${action}`}
+        data-state={state}
+        loop
+        playsInline
+        preload="metadata"
+        onClick={toggle}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
+          toggle();
+        }}
+      />
+      <Duration item={item} copy={copy} />
+    </span>
+  );
 }
 
 function Print({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
@@ -61,6 +127,7 @@ function Print({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
     <span class="mount__print">
       <img
         class="mount__media"
+        draggable={false}
         src={item.src}
         srcset={item.srcSet}
         sizes={item.srcSet ? MOUNT_SIZES : undefined}
@@ -70,12 +137,7 @@ function Print({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
         loading="lazy"
         decoding="async"
       />
-      {item.kind === 'video' && item.durationMs !== undefined && (
-        <span class="mount__duration">
-          <span aria-hidden="true">{formatDuration(item.durationMs)}</span>
-          <span class="visually-hidden">{`${copy.video}, ${Math.round(item.durationMs / 1000)} ${copy.seconds}`}</span>
-        </span>
-      )}
+      <Duration item={item} copy={copy} />
     </span>
   );
 }
@@ -92,7 +154,7 @@ function Live({ live, behind }: { live: LivePreview; behind: boolean }) {
   }, [live.stream]);
   return (
     <span class={behind ? 'mount__print mount__print--live mount__print--behind' : 'mount__print mount__print--live'}>
-      <video ref={video} class={live.mirrored ? 'mount__live mount__live--mirrored' : 'mount__live'} muted playsInline autoPlay aria-hidden="true" />
+      <video ref={video} class="mount__live" muted playsInline autoPlay aria-hidden="true" />
       {live.countdown !== undefined && !behind && (
         // Announced once by the page when the countdown starts; each second is visual only.
         <span class="mount__countdown" aria-hidden="true">
@@ -137,11 +199,13 @@ function SaveStatus({ media, copy, onRetry, onDiscard }: { media: AlbumMedia[]; 
 
 /**
  * A mounted print, or — with no media — four bare corners on the leaf.
- * Several items become a carousel with dots beneath. In write mode the mount
- * is a toggle button: selecting it makes it the camera's destination. On the
- * public album it opens the full photo or video.
+ * Several items become a carousel with numbers beneath. In write mode a "+"
+ * after the numbers is the only way to aim the camera here; choosing a
+ * number shows that item and turns the camera away again. On the public
+ * album a tap on a video plays or pauses it, and the expand icon at the
+ * bottom right opens the photo or video full screen (owner request).
  */
-export function MediaMount({ media, mode, spreadName, selected, onSelect, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
+export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, canAdd, onRemove, live, justSaved, onOpen, onRetry, onDiscard, copy }: Props) {
   const [index, setIndex] = useState(0);
   // A new capture landing here comes into view on its own.
   const previousCount = useRef(media.length);
@@ -152,8 +216,21 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
 
   const current = media[Math.min(index, media.length - 1)];
   const showLive = live !== undefined && !(live.reviewing && current);
-  const ratio = showLive ? live.aspect : current ? current.width / current.height : CELL_RATIO;
-  const shape = frameShape(ratio);
+
+  /** Shows one item. In the spread the camera is aimed at, that turns the camera away. */
+  const show = (i: number) => {
+    setIndex(i);
+    if (selected) onLeave();
+  };
+
+  // A swipe steps through the items. The live picture counts as the place
+  // after the last item: swiping back from it shows the newest capture. A
+  // swipe never aims the camera — only "+" (or touching an empty mount) does.
+  const swipe = useSwipe((direction) => {
+    const from = showLive ? media.length : Math.min(index, media.length - 1);
+    const to = from + direction;
+    if (to >= 0 && to < media.length) show(to);
+  });
 
   const itemCount = media.length === 1 ? `1 ${copy.item}` : `${media.length} ${copy.items}`;
   // The name must contain any text drawn on the button (WCAG 2.5.3, label in
@@ -163,28 +240,68 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
       ? `, ${copy.video} ${formatDuration(current.durationMs)}`
       : '';
   const mountName = `${spreadName}, ${media.length === 0 ? copy.emptyMount : itemCount}${videoPart}`;
+  const writing = mode === 'write';
+  // On the iPads even one item gets its number, beside the "+"; on the public
+  // album a single print needs no navigation.
+  const showNumbers = writing ? media.length > 0 : media.length > 1;
+
+  // Every saved photo or video on show carries "Delete" (owner request). One
+  // still on its way has "Saving…" instead, and the live camera has neither.
+  const removable = mode === 'write' && !selected && !showLive && current !== undefined && !current.pending && onRemove !== undefined;
+  // While the camera is aimed here, "Cancel" takes Delete's place (owner request) —
+  // but not mid-countdown or mid-recording, which must finish or be stopped at the shutter.
+  const cancellable = writing && selected && !live?.locked;
+
+  const expandable = !writing && current !== undefined && !current.pending && onOpen !== undefined;
 
   const frame = (
-    <span class={shape.class} style={{ aspectRatio: shape.aspect }}>
+    <span class="mount__frame">
       {live && <Live live={live} behind={!showLive} />}
-      {!showLive && current && <Print item={current} copy={copy} />}
+      {!showLive &&
+        current &&
+        // A saved video plays in place; one still on its way shows its poster.
+        (current.kind === 'video' && !current.pending && current.fullSrc ? (
+          <InlineVideo key={current.id} item={current} autoplay={writing} copy={copy} />
+        ) : (
+          <Print key={current.id} item={current} copy={copy} />
+        ))}
+      {expandable && (
+        <button
+          type="button"
+          class="mount__expand"
+          aria-label={`${copy.viewer.expand}, ${mountName}`}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(current);
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+            <path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" />
+          </svg>
+        </button>
+      )}
       <PhotoCorners />
     </span>
   );
 
   let mount;
   if (mode === 'write') {
+    // Not a control: the "+" below is. The print's own alt text names it.
+    // An empty mount is the one exception (owner request): touching the bare
+    // corners aims the camera there at once. It is a pointer shortcut only —
+    // the "+" beside it is the same action, named, for keyboard and screen
+    // readers, so the mount does not repeat it as a second control.
+    const addable = media.length === 0 && !selected && canAdd;
     mount = (
-      <button type="button" class="mount" aria-pressed={selected} aria-label={mountName} data-saved={justSaved ? 'true' : undefined} onClick={onSelect}>
+      <div
+        class="mount"
+        data-selected={selected ? 'true' : undefined}
+        data-saved={justSaved ? 'true' : undefined}
+        data-addable={addable ? 'true' : undefined}
+        onClick={addable ? onAdd : undefined}
+      >
         {frame}
-      </button>
-    );
-  } else if (current && !current.pending && onOpen) {
-    const action = current.kind === 'video' ? copy.viewer.playVideo : copy.viewer.openPhoto;
-    mount = (
-      <button type="button" class="mount mount--open" aria-label={`${action}, ${mountName}`} onClick={() => onOpen(current)}>
-        {frame}
-      </button>
+      </div>
     );
   } else {
     mount = <div class="mount">{frame}</div>;
@@ -192,22 +309,46 @@ export function MediaMount({ media, mode, spreadName, selected, onSelect, live, 
 
   return (
     <>
-      <div class="mount-wrap">
+      <div class="mount-wrap" {...swipe}>
+        {cancellable && (
+          <button type="button" class="mount__cancel" aria-label={`${copy.camera.cancelAimFor} ${spreadName}`} onClick={onLeave}>
+            {copy.camera.cancelAim}
+          </button>
+        )}
+        {removable && (
+          // Above the print's top right, on the leaf — never over the picture.
+          <button
+            type="button"
+            class="mount__delete"
+            // The name holds the visible word (WCAG 2.5.3) and says what goes.
+            aria-label={current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}
+            onClick={() => onRemove(current)}
+          >
+            {copy.remove.label}
+          </button>
+        )}
         {mount}
         <SaveStatus media={media} copy={copy} onRetry={onRetry} onDiscard={onDiscard} />
       </div>
-      <div class="dots" role={media.length > 1 ? 'group' : undefined} aria-label={media.length > 1 ? `${spreadName}, ${copy.items}` : undefined}>
-        {media.length > 1 &&
+      <div class="numbers" role={showNumbers || writing ? 'group' : undefined} aria-label={showNumbers || writing ? `${spreadName}, ${media.length === 0 ? copy.emptyMount : itemCount}` : undefined}>
+        {showNumbers &&
           media.map((item, i) => (
             <button
               key={item.id}
               type="button"
-              class="dots__dot"
-              aria-current={i === index ? 'true' : undefined}
+              class="numbers__item"
+              aria-current={i === index && !showLive ? 'true' : undefined}
               aria-label={`${copy.showItem} ${i + 1} ${copy.of} ${media.length}`}
-              onClick={() => setIndex(i)}
-            />
+              onClick={() => show(i)}
+            >
+              {i + 1}
+            </button>
           ))}
+        {writing && canAdd && (
+          <button type="button" class="numbers__add" aria-pressed={selected} aria-label={`${copy.addTo} ${spreadName}`} onClick={onAdd}>
+            <span aria-hidden="true">+</span>
+          </button>
+        )}
       </div>
     </>
   );

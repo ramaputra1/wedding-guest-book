@@ -7,7 +7,7 @@
  * palm — is listed in the phase report as NEEDS DEVICE TEST.
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
-import { cameraReady, queued, serverEntries, serverStats, signIn } from './helpers';
+import { addTo, cameraReady, openPage, queued, serverEntries, serverStats, signIn } from './helpers';
 
 const PEN = '.writing-page--live canvas.writing-page__pen';
 const INK = '.writing-page--live canvas.writing-page__ink';
@@ -15,7 +15,7 @@ const INK = '.writing-page--live canvas.writing-page__ink';
 type Fraction = [number, number];
 
 /**
- * Waits for the album's own smooth scroll to the destination spread to end,
+ * Waits for any smooth scroll of the album (the camera brings its spread into view) to end,
  * then brings the whole page on screen: input aimed at a page still moving,
  * or below the fold, would land somewhere else.
  */
@@ -109,12 +109,21 @@ async function latestStrokes(page: Page, entryId: string) {
   }, entryId);
 }
 
-/** Saves the page and waits until the server has the new version and the queue is empty. */
+/**
+ * Saves the page and waits until the server has the new version and the
+ * queue is empty. Saving closes the page (owner request), so it is opened
+ * again — on its new spread, if it started on "New spread" — to carry on.
+ */
 async function saveAndWait(page: Page) {
   const before = (await serverStats(page)).canvasVersions;
+  const spreadsBefore = new Set((await serverEntries(page)).map((e) => e.id));
+  const spreadId = await page.locator('.writing-page--live').evaluate((el) => el.closest('[data-spread-id]')!.getAttribute('data-spread-id')!);
   await page.locator('.writing-tool--save').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
   await expect.poll(async () => (await serverStats(page)).canvasVersions, { timeout: 60_000 }).toBe(before + 1);
   await expect.poll(async () => (await queued(page)).length, { timeout: 60_000 }).toBe(0);
+  const entryId = spreadId === 'new-spread' ? (await serverEntries(page)).find((e) => !spreadsBefore.has(e.id))!.id : spreadId;
+  await openPage(page, entryId);
   await expect(page.locator('.writing-tool--save')).toHaveText('Saved');
   await deskInView(page);
 }
@@ -136,8 +145,7 @@ function pngSize(page: Page, url: string) {
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await cameraReady(page);
-  await expect(page.locator(PEN)).toBeVisible();
+  await openPage(page);
   await deskInView(page);
 });
 
@@ -199,12 +207,16 @@ test('clearing after a save empties the screen only: the saved version stays, an
   const saved = await latestStrokes(page, entryId);
 
   // Clear asks first: dismissing it changes nothing.
-  page.once('dialog', (dialog) => void dialog.dismiss());
+  // Clear asks in the album's own dialog, as Delete does: No changes nothing.
   await page.locator('.writing-tool', { hasText: 'Clear' }).click();
+  await expect(page.locator('dialog.confirm .confirm__question')).toHaveText('Clear the page?');
+  await expect(page.locator('dialog.confirm .confirm__no')).toBeFocused();
+  await page.locator('dialog.confirm .confirm__no').click();
+  await expect(page.locator('dialog.confirm')).toHaveCount(0);
   expect(await strokeCount(page)).toBe(1);
 
-  page.once('dialog', (dialog) => void dialog.accept());
   await page.locator('.writing-tool', { hasText: 'Clear' }).click();
+  await page.locator('dialog.confirm .confirm__yes').click();
   await expect.poll(() => strokeCount(page)).toBe(0);
   expect(await inkedPixels(page)).toBe(0);
   expect((await latestStrokes(page, entryId)).id).toBe(saved.id);
@@ -221,7 +233,7 @@ test('undo survives a resize, and strokes redraw at the new size', async ({ page
   await drawWithMouse(page, [0.1, 0.5], [0.4, 0.5]);
   await drawWithMouse(page, [0.1, 0.8], [0.4, 0.8]);
   await expect.poll(() => strokeCount(page)).toBe(3);
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect.poll(() => strokeCount(page)).toBe(2);
 
   const before = await page.locator(INK).evaluate((c: HTMLCanvasElement) => c.width);
@@ -231,8 +243,8 @@ test('undo survives a resize, and strokes redraw at the new size', async ({ page
   expect(await strokeCount(page)).toBe(2);
   expect(await inkedPixels(page)).toBeGreaterThan(100);
 
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
-  await page.locator('.writing-tool', { hasText: 'Undo' }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await expect.poll(() => strokeCount(page)).toBe(0);
   expect(await inkedPixels(page)).toBe(0);
 });
@@ -241,7 +253,7 @@ test('unsaved strokes survive a reload', async ({ page }) => {
   await drawWithMouse(page, [0.3, 0.3], [0.7, 0.4]);
   await expect.poll(() => strokeCount(page)).toBe(1);
   await page.reload();
-  await expect(page.locator(PEN)).toBeVisible();
+  await openPage(page);
   await deskInView(page);
   await expect.poll(() => strokeCount(page)).toBe(1);
   await expect(page.locator('.writing-tool--save')).toBeEnabled();
@@ -259,8 +271,7 @@ test('the saved stroke JSON redraws the same page the PNG shows', async ({ page 
 
   // A fresh load draws the page from the server's stroke JSON alone.
   await page.reload();
-  await page.locator(`[data-spread-id="${entryId}"] .mount`).click();
-  await expect(page.locator(`[data-spread-id="${entryId}"] ${PEN}`)).toBeVisible();
+  await openPage(page, entryId);
   await deskInView(page);
   await expect.poll(() => strokeCount(page)).toBe(3);
 
@@ -287,6 +298,9 @@ test('the saved stroke JSON redraws the same page the PNG shows', async ({ page 
 });
 
 test('the pen writes with pressure, the camera preview holds still while it is down', async ({ page }) => {
+  await addTo(page);
+  await cameraReady(page);
+  await deskInView(page);
   const cdp = await page.context().newCDPSession(page);
   const video = page.locator('video.mount__live');
   await expect.poll(() => video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(false);
@@ -321,7 +335,7 @@ test('coalesced pointer events are used: every sample between frames becomes a p
     void original;
   });
   await page.reload();
-  await cameraReady(page);
+  await openPage(page);
   await deskInView(page);
   const cdp = await page.context().newCDPSession(page);
   await drawWithPen(cdp, page, [0.1, 0.5], [0.6, 0.5], 10);
@@ -397,15 +411,16 @@ test('offline: a saved page waits in the queue as "Saving…", survives a reload
   await page.route('**/api/canvas**', (route) => route.abort('internetdisconnected'));
   await drawWithMouse(page, [0.2, 0.3], [0.7, 0.6]);
   await page.locator('.writing-tool--save').click();
-  await expect(page.locator('.writing-page--live .mount-status--saving')).toHaveText('Saving…');
+  // Saved, the page closes; "Saving…" shows on the paper until the server has it.
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
   await expect.poll(async () => (await queued(page)).length).toBe(1);
-  const entryId = await deskEntryId(page);
+  const entryId = (await queued(page))[0].entryId;
+  await expect(page.locator(`[data-spread-id="${entryId}"] .writing-page .mount-status--saving`)).toHaveText('Saving…');
   expect(JSON.parse((await draft(page, entryId))!)).toMatchObject({ unsaved: false });
 
   // A reload while still offline: the page comes back from the iPad's own copy.
   await page.reload();
-  await page.locator(`[data-spread-id="${entryId}"] .mount`).click();
-  await expect(page.locator(`[data-spread-id="${entryId}"] ${PEN}`)).toBeVisible();
+  await openPage(page, entryId);
   await expect.poll(() => strokeCount(page)).toBe(1);
 
   const before = (await serverStats(page)).canvasVersions;
@@ -427,4 +442,86 @@ test('on a narrow screen the tools wrap; nothing scrolls sideways', async ({ pag
     expect(box.x).toBeGreaterThanOrEqual(page_.x - 1);
     expect(box.x + box.width).toBeLessThanOrEqual(page_.x + page_.width + 1);
   }
+});
+
+test('Undo and Redo are icons; Redo brings back what Undo took, until a new stroke', async ({ page }) => {
+  const undo = page.getByRole('button', { name: 'Undo', exact: true });
+  const redo = page.getByRole('button', { name: 'Redo', exact: true });
+  await expect(undo.locator('svg')).toBeVisible();
+  await expect(redo.locator('svg')).toBeVisible();
+  await expect(undo).toHaveText('');
+  await expect(redo).toBeDisabled();
+
+  await drawWithMouse(page, [0.1, 0.2], [0.4, 0.2]);
+  await drawWithMouse(page, [0.1, 0.5], [0.4, 0.5]);
+  await undo.click();
+  await undo.click();
+  await expect.poll(() => strokeCount(page)).toBe(0);
+  await redo.click();
+  await expect.poll(() => strokeCount(page)).toBe(1);
+  await redo.click();
+  await expect.poll(() => strokeCount(page)).toBe(2);
+  await expect(redo).toBeDisabled();
+  expect(await inkedPixels(page)).toBeGreaterThan(100);
+
+  // A new stroke after an undo: there is nothing left to redo.
+  await undo.click();
+  await drawWithMouse(page, [0.5, 0.8], [0.9, 0.8]);
+  await expect(redo).toBeDisabled();
+  await expect.poll(() => strokeCount(page)).toBe(2);
+});
+
+test('Cancel closes the page: at once when nothing is unsaved; after asking when there is, and then the unsaved strokes go', async ({ page }) => {
+  // Nothing written: straight back to paper.
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
+  await expect(page.locator('dialog.confirm')).toHaveCount(0);
+  await expect(page.locator('[data-spread-id="new-spread"] .writing-page__choose')).toBeFocused();
+
+  // Written and saved, then more written: Cancel asks.
+  await openPage(page);
+  await deskInView(page);
+  await drawWithMouse(page, [0.1, 0.2], [0.6, 0.3]);
+  await saveAndWait(page);
+  const entryId = await deskEntryId(page);
+  await drawWithMouse(page, [0.1, 0.6], [0.6, 0.7]);
+  await expect.poll(() => strokeCount(page)).toBe(2);
+
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await expect(page.locator('dialog.confirm .confirm__question')).toHaveText('Leave without saving?');
+  // No: still writing, nothing lost.
+  await page.locator('dialog.confirm .confirm__no').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(1);
+  expect(await strokeCount(page)).toBe(2);
+
+  // Yes: closed, and reopening shows the saved page only.
+  await page.locator('.writing-tool', { hasText: 'Cancel' }).click();
+  await page.locator('dialog.confirm .confirm__yes').click();
+  await expect(page.locator('.writing-page--live')).toHaveCount(0);
+  await openPage(page, entryId);
+  await expect.poll(() => strokeCount(page)).toBe(1);
+  expect((await latestStrokes(page, entryId)).version).toBe(1);
+});
+
+test('Cancel, Save and Saved are underlined words, told apart by the underline\'s colour', async ({ page }) => {
+  const save = page.locator('.writing-tool--save');
+  const cancel = page.locator('.writing-tool--cancel');
+  for (const word of [save, cancel]) {
+    await expect(word).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+    await expect(word).toHaveCSS('border-top-width', '0px');
+    await expect(word).toHaveCSS('border-top-left-radius', '0px');
+    await expect(word).toHaveCSS('text-decoration-line', 'underline');
+  }
+  await expect(cancel).toHaveCSS('text-decoration-color', 'rgb(180, 101, 74)'); // --warn
+  await expect(cancel).toHaveCSS('color', 'rgb(232, 228, 220)'); // words stay --on-leaf
+
+  await drawWithMouse(page, [0.1, 0.2], [0.6, 0.3]);
+  await expect(save).toHaveAttribute('data-state', 'save');
+  await expect(save).toHaveCSS('text-decoration-color', 'rgb(232, 228, 220)'); // --on-leaf
+  await expect(save).toHaveCSS('color', 'rgb(232, 228, 220)');
+
+  await saveAndWait(page);
+  await expect(save).toHaveAttribute('data-state', 'saved');
+  await expect(save).toHaveCSS('color', 'rgb(160, 138, 82)'); // --brass
+  await expect(save).toHaveCSS('text-decoration-color', 'rgb(160, 138, 82)');
 });

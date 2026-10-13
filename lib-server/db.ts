@@ -36,14 +36,33 @@ interface CanvasRow {
   created_at: number;
 }
 
-/** Everything the album shows, in three reads sent as one round trip. */
+const MEDIA_COLUMNS = 'id, entry_id, kind, r2_key, poster_key, thumb_key, width, height, duration_ms, bytes, created_at';
+
+/**
+ * The album's media: everything not removed. If the database has not had
+ * migration 0002 yet (the code reached it first), nothing has been removed
+ * either — so the album shows everything rather than failing to load.
+ */
+async function visibleMedia(db: D1Database): Promise<D1Result> {
+  try {
+    return await db
+      .prepare(
+        `SELECT ${MEDIA_COLUMNS} FROM media
+         WHERE id NOT IN (SELECT media_id FROM media_removals)
+         ORDER BY entry_id, sort_order, id`,
+      )
+      .all();
+  } catch (failure) {
+    if (!String(failure).includes('no such table: media_removals')) throw failure;
+    return db.prepare(`SELECT ${MEDIA_COLUMNS} FROM media ORDER BY entry_id, sort_order, id`).all();
+  }
+}
+
+/** Everything the album shows: entries and canvases in one round trip, then the media. */
 export async function listEntries(db: D1Database): Promise<ApiEntry[]> {
-  const [entries, media, canvases] = await db.batch([
+  const mediaRead = visibleMedia(db);
+  const [entries, canvases] = await db.batch([
     db.prepare('SELECT id, device_id, title, note, created_at FROM entries ORDER BY created_at, id'),
-    db.prepare(
-      `SELECT id, entry_id, kind, r2_key, poster_key, thumb_key, width, height, duration_ms, bytes, created_at
-       FROM media ORDER BY entry_id, sort_order, id`,
-    ),
     // The highest version per entry. Versions are unique per entry (see insertCanvas).
     db.prepare(
       `SELECT c.id, c.entry_id, c.r2_key, c.version, c.created_at
@@ -52,6 +71,7 @@ export async function listEntries(db: D1Database): Promise<ApiEntry[]> {
          ON latest.entry_id = c.entry_id AND latest.version = c.version`,
     ),
   ]);
+  const media = await mediaRead;
 
   const mediaByEntry = new Map<string, ApiMedia[]>();
   for (const row of media.results as unknown as MediaRow[]) {
@@ -146,6 +166,41 @@ export async function insertMedia(db: D1Database, m: NewMedia): Promise<boolean>
   return result.meta.changes === 1;
 }
 
+const MISSING_SETTINGS_TABLE = 'no such table: album_settings';
+
+/** True when the database has not had migration 0003 yet. */
+export function isMissingSettingsTable(failure: unknown): boolean {
+  return String(failure).includes(MISSING_SETTINGS_TABLE);
+}
+
+/** The look in use: the newest saved row, or null when none has been saved (or before migration 0003). */
+export async function latestSettings(db: D1Database): Promise<{ data: string; created_at: number } | null> {
+  try {
+    return await db.prepare('SELECT data, created_at FROM album_settings ORDER BY created_at DESC, id DESC LIMIT 1').first();
+  } catch (failure) {
+    if (isMissingSettingsTable(failure)) return null;
+    throw failure;
+  }
+}
+
+/** Saves a look as a new row; earlier looks stay. False when this id was already saved. */
+export async function insertSettings(db: D1Database, row: { id: string; deviceId: string; data: string; createdAt: number }): Promise<boolean> {
+  const result = await db
+    .prepare('INSERT OR IGNORE INTO album_settings (id, device_id, data, created_at) VALUES (?, ?, ?, ?)')
+    .bind(row.id, row.deviceId, row.data, row.createdAt)
+    .run();
+  return result.meta.changes > 0;
+}
+
+/** Takes a media item out of the album. False when it was already removed. */
+export async function insertRemoval(db: D1Database, removal: { mediaId: string; deviceId: string; removedAt: number }): Promise<boolean> {
+  const result = await db
+    .prepare('INSERT OR IGNORE INTO media_removals (media_id, device_id, removed_at) VALUES (?, ?, ?)')
+    .bind(removal.mediaId, removal.deviceId, removal.removedAt)
+    .run();
+  return result.meta.changes > 0;
+}
+
 export async function findCanvas(db: D1Database, id: string): Promise<{ id: string; entry_id: string; version: number } | null> {
   return db.prepare('SELECT id, entry_id, version FROM canvases WHERE id = ?').bind(id).first();
 }
@@ -181,14 +236,27 @@ export async function latestCanvas(
     .first();
 }
 
+/**
+ * `media` counts what the album shows (deleted items excluded); `mediaBytes`
+ * counts what storage holds, which still includes deleted items' files.
+ */
 export async function counts(db: D1Database): Promise<{ entries: number; media: number; canvases: number; mediaBytes: number }> {
-  const row = await db
-    .prepare(
-      `SELECT (SELECT COUNT(*) FROM entries) AS entries,
-              (SELECT COUNT(*) FROM media) AS media,
-              (SELECT COUNT(*) FROM canvases) AS canvases,
-              (SELECT COALESCE(SUM(bytes), 0) FROM media) AS mediaBytes`,
-    )
-    .first<{ entries: number; media: number; canvases: number; mediaBytes: number }>();
+  const query = (visible: string) =>
+    db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM entries) AS entries,
+                (SELECT COUNT(*) FROM media ${visible}) AS media,
+                (SELECT COUNT(*) FROM canvases) AS canvases,
+                (SELECT COALESCE(SUM(bytes), 0) FROM media) AS mediaBytes`,
+      )
+      .first<{ entries: number; media: number; canvases: number; mediaBytes: number }>();
+  let row;
+  try {
+    row = await query('WHERE id NOT IN (SELECT media_id FROM media_removals)');
+  } catch (failure) {
+    // Before migration 0002 nothing can have been deleted.
+    if (!String(failure).includes('no such table: media_removals')) throw failure;
+    row = await query('');
+  }
   return row ?? { entries: 0, media: 0, canvases: 0, mediaBytes: 0 };
 }

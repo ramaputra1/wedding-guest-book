@@ -73,11 +73,18 @@ export type ApiErrorCode =
   | 'payload_too_large'
   | 'unsupported_media_type'
   | 'server_not_configured'
+  | 'migration_missing'
   | 'server_error';
 
 export interface ApiError {
   code: ApiErrorCode;
   message: string;
+}
+
+/** GET /api/settings: the album's look, and when it was saved (null: never — the defaults). */
+export interface ApiSettings {
+  look: import('./settings').AlbumLook;
+  savedAt: number | null;
 }
 
 export interface ApiSession {

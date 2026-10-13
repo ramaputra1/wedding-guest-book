@@ -29,7 +29,8 @@ export function MediaViewer({ item, onClose, copy }: Props) {
       onClick={(event) => event.target === dialog.current && dialog.current?.close()}
     >
       {item.kind === 'video' ? (
-        <video class="viewer__media" src={item.fullSrc} poster={item.posterSrc} controls playsInline preload="metadata" autoPlay />
+        // Loops, as videos do everywhere in the album (owner request).
+        <video class="viewer__media" src={item.fullSrc} poster={item.posterSrc} controls playsInline preload="metadata" autoPlay loop />
       ) : (
         <img class="viewer__media" src={item.fullSrc ?? item.src} alt={item.alt} />
       )}

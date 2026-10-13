@@ -13,6 +13,6 @@ import { site } from '../config/site';
   <main class="album" id="album" data-lift-target>
     {/* client:visible: the cover loads with no island JavaScript; the album
         hydrates and fetches /api/entries only once scrolled into view. */}
-    <GuestBook client:visible mode="view" intro={site.intro} copy={site.album} />
+    <GuestBook client:visible mode="view" maxPerSpread={site.capture.maxPerSpread} intro={site.intro} copy={site.album} />
   </main>
 </Base>
