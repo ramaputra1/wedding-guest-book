@@ -124,6 +124,13 @@ Three properties make it a real backup: it is **versioned** (git history recover
 
 Media uses **Git LFS** because the archive trends toward ~1.3 GB. It lives in a **separate repository** from the application so either can be deleted or moved without the other.
 
+**As built (Phase 6):**
+- **Wrangler, not an SDK.** The export and restore go through Wrangler, already a dev dependency, because it reaches D1 and R2 the same way on the local test server, the test database and production. That is what let the restore drill run for real in the test suite. No new dependency.
+- **The nightly token is read-only** (D1 Read, R2 Read): a leaked token cannot change the album. Restores use the owner's own login.
+- **Test captures go to the archive's `test` branch,** never its `main`.
+- **Git LFS quota.** GitHub Free includes 10 GiB of LFS storage and 10 GiB of bandwidth a month (GitHub docs, checked 2026-10-13); the archive is expected at ~1.3 GB. The nightly job does not download old media, so it uses almost no bandwidth. With the default $0 LFS budget, GitHub blocks uploads at the limit rather than charging.
+- **`manifest.js` beside `manifest.json`.** Browsers refuse to `fetch()` a file:// JSON, but run a `<script src>` beside the page, which is how `viewer.html` opens by double-click.
+
 ---
 
 ## D11 — Dependencies capped at four

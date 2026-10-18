@@ -1,0 +1,128 @@
+# The nightly archive: the live album (D1 + R2) → the private archive
+# repository, as manifest.json, the original files (Git LFS) and viewer.html
+# (docs/ARCHITECTURE.md, "Archive, backup, restore"; docs/RUNBOOK.md).
+#
+# Needs, set up once by the owner (docs/RUNBOOK.md, "Set up the archive"):
+#   variable ARCHIVE_REPO           e.g. ramaputra1/wedding-guest-book-archive
+#   secret   ARCHIVE_TOKEN          fine-grained token: that repository only, Contents read and write
+#   secret   CLOUDFLARE_API_TOKEN   read only: Account → D1 → Read, Account → Workers R2 Storage → Read
+#   secret   CLOUDFLARE_ACCOUNT_ID
+#
+# This repository is public, so its run logs are public: nothing here prints
+# a secret or the album's contents, only counts and file names.
+
+name: Archive
+
+on:
+  schedule:
+    # 19:23 UTC is 02:23 in Jakarta (WIB): the album is quiet, and it is off
+    # the hour, when GitHub's scheduler is busiest.
+    - cron: '23 19 * * *'
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Which album to archive (test goes to the archive's "test" branch, never main)
+        type: choice
+        options: [production, test]
+        default: production
+
+permissions:
+  contents: read
+
+# One archive run at a time per album: two would race to push.
+concurrency:
+  group: archive-${{ inputs.target || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      TARGET: ${{ inputs.target || 'production' }}
+      ARCHIVE_REPO: ${{ vars.ARCHIVE_REPO }}
+    steps:
+      - name: Check the setup
+        env:
+          ARCHIVE_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=()
+          [ -n "$ARCHIVE_REPO" ] || missing+=("the repository variable ARCHIVE_REPO")
+          [ -n "$ARCHIVE_TOKEN" ] || missing+=("the secret ARCHIVE_TOKEN")
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing+=("the secret CLOUDFLARE_API_TOKEN")
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing+=("the secret CLOUDFLARE_ACCOUNT_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            for item in "${missing[@]}"; do echo "::error::Missing $item. See docs/RUNBOOK.md, 'Set up the archive'."; done
+            exit 1
+          fi
+
+      - name: Get the application
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Get the archive (without downloading old media)
+        env:
+          ARCHIVE_TOKEN: ${{ secrets.ARCHIVE_TOKEN }}
+        run: |
+          # production → main; test → a separate "test" branch, so test captures never mix into the real archive.
+          if [ "$TARGET" = production ]; then branch=main; else branch=test; fi
+          echo "BRANCH=$branch" >> "$GITHUB_ENV"
+          # --skip-smudge: old photos and videos stay as small LFS pointers here.
+          # Downloading them every night would spend the LFS bandwidth allowance;
+          # the export reads their size and SHA-256 from the pointers instead.
+          git lfs install --skip-smudge
+          git clone --quiet --no-checkout "https://x-access-token:${ARCHIVE_TOKEN}@github.com/${ARCHIVE_REPO}.git" archive
+          cd archive
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            git checkout --quiet "$branch"
+          else
+            echo "The archive has no '$branch' branch yet: starting it."
+            git checkout --quiet --orphan "$branch"
+          fi
+
+      - name: Export
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # A failed export still commits what it could fetch; the last step turns the run red.
+          set +e
+          node --experimental-strip-types --no-warnings scripts/export-archive.ts --target "$TARGET" --out archive
+          echo "EXPORT_STATUS=$?" >> "$GITHUB_ENV"
+
+      - name: Commit and push
+        working-directory: archive
+        run: |
+          git config user.name "Guest book archive"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git lfs install --local --skip-smudge
+          git add --all
+          if git diff --cached --quiet; then
+            echo "Nothing changed since the last archive."
+          else
+            git commit --quiet -m "Archive $(date -u +%F) ($TARGET)"
+            git push --quiet origin "HEAD:$BRANCH"
+          fi
+          # The media must be in LFS, not in git itself: count both, and fail if a media file slipped through.
+          echo "In Git LFS: $(git lfs ls-files | wc -l) files"
+          stray=$(git ls-files 'photos/*' 'videos/*' 'thumbs/*' 'posters/*' 'canvases/*.png' | while read -r f; do
+            git check-attr filter -- "$f" | grep -q 'filter: lfs' || echo "$f"; done)
+          if [ -n "$stray" ]; then echo "::error::These media files are not in Git LFS:"; echo "$stray"; exit 1; fi
+
+      - name: Report a failed export
+        if: env.EXPORT_STATUS != '0'
+        run: |
+          echo "::error::The export found files missing from storage, or an invalid manifest. See the Export step, and docs/RUNBOOK.md."
+          exit 1
