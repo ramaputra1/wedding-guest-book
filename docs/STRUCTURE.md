@@ -148,7 +148,12 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 ├── scripts/
 │   ├── prepare-hero.mjs          # original photo → stripped, resized src/assets/hero/hero.jpg
 │   ├── hash-passphrase.mjs       # generate WRITER_PASSPHRASE_HASH
-│   └── export-archive.ts         # D1 + R2 → archive repo
+│   ├── export-archive.ts         # D1 + R2 → archive folder (manifest, files, viewer); --check validates
+│   ├── restore-archive.ts        # archive → D1 + R2: only what is missing, dry run unless --apply
+│   └── archive/
+│       ├── store.ts              # D1 + R2 through wrangler: local, test or production
+│       ├── manifest.ts           # manifest.json's shape, building it, validating an archive
+│       └── viewer.html           # the offline album, copied into every archive
 │
 ├── tests/
 │   ├── setup/                    # starts wrangler with throwaway secrets + a fresh DB

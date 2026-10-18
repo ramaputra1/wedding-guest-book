@@ -8,6 +8,8 @@ declare module 'vitest' {
     signingKey: string;
     passphrase: string;
     passphraseHash: string;
+    /** The server's local D1 + R2 folder, for tests that use wrangler directly (the archive drill). */
+    stateDir: string;
   }
 }
 
@@ -22,6 +24,7 @@ export default async function setup(project: TestProject) {
   project.provide('signingKey', signingKey);
   project.provide('passphrase', passphrase);
   project.provide('passphraseHash', passphraseHash);
+  project.provide('stateDir', state.dir);
 
   return async () => {
     await server.stop();

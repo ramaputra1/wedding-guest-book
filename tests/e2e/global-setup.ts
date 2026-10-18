@@ -14,6 +14,8 @@ export default async function globalSetup() {
   // Workers inherit the environment set here.
   process.env.E2E_BASE_URL = server.url;
   process.env.E2E_PASSPHRASE = passphrase;
+  // The server's local D1 + R2, for the archive viewer test's export.
+  process.env.E2E_STATE_DIR = state.dir;
   return async () => {
     await server.stop();
     state.remove();

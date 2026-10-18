@@ -143,6 +143,10 @@ Written procedures rot. In Phase 6 the restore is **performed, not described**:
 5. Confirm it reappears intact, including the canvas version history.
 6. Paste the commands and output into the phase report.
 
+**How it is run** (`tests/archive.spec.ts`): against the test server's own local D1 + R2, through the same scripts and the same Wrangler commands that run against Cloudflare. The entry has a photo, a video, two page versions and a deleted photo; the rows and objects are deleted for real; the restore puts them back and the test compares every byte. Commands and output land in `test-results/restore-drill.log`. The same drill against the Cloudflare test database is in docs/RUNBOOK.md, section 6.
+
+**`viewer.html` from file://** (`tests/e2e/archive-viewer.spec.ts`): exported from the e2e server, opened as a file with every non-file request refused; it shows the album, plays the video, and opens a photo full size.
+
 Also confirmed: **`viewer.html` opens from `file://`** with no server, no internet, and plays a video.
 
 ---

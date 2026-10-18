@@ -130,6 +130,10 @@ Each should end with `0001_init.sql ✅`. Running them again is safe — applied
 
 **`0002_media_removals.sql`** (deleting photos and videos) adds one table and changes nothing existing. Apply it to the **test** database before the code that uses it reaches `dev-acceptance`, and to **production** before it reaches `main`. If the code gets there first the album still loads (it shows everything), but deleting fails until the migration is applied.
 
+### The nightly archive
+
+Set up once, after Phase 6: docs/RUNBOOK.md, section 1 (a private archive repository, a fine-grained GitHub token, a read-only Cloudflare token, and three secrets and one variable on this repository).
+
 ### Local development
 
 `npm run preview` serves the built site and the API against a local copy of D1 and R2 under `.wrangler/`:

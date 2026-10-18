@@ -1,0 +1,297 @@
+<!doctype html>
+<!--
+  The guest book, offline. Copied into the archive by scripts/export-archive.ts.
+
+  Open this file by double-clicking it: no server, no internet, nothing to
+  install. It reads manifest.js beside it (the same data as manifest.json, as
+  a script, because browsers will not fetch() a file:// JSON) and shows the
+  photos, videos and handwritten pages from the folders beside it.
+
+  Zero dependencies, on purpose: it must still open in ten years.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Guest book</title>
+    <style>
+      @font-face { font-family: 'Spectral'; font-style: normal; font-weight: 400; src: url('fonts/spectral-latin-400-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'Spectral'; font-style: italic; font-weight: 400; src: url('fonts/spectral-latin-400-italic.woff2') format('woff2'); }
+      @font-face { font-family: 'Spectral'; font-style: normal; font-weight: 600; src: url('fonts/spectral-latin-600-normal.woff2') format('woff2'); }
+      @font-face { font-family: 'Public Sans'; font-style: normal; font-weight: 100 900; src: url('fonts/public-sans-latin-wght-normal.woff2') format('woff2'); }
+
+      /* The album's tokens (docs/DESIGN.md), copied: this file stands alone. */
+      :root {
+        --leaf: #12151C; --leaf-raised: #1C2029; --leaf-edge: #0C0E13;
+        --photo-paper: #FBFAF7; --writing-paper: #EFE8DA;
+        --ink: #1A2238; --ink-soft: #4A5268;
+        --brass: #A08A52; --on-leaf: #E8E4DC; --on-leaf-soft: #8A8E98;
+        --watermark: rgba(26, 34, 56, 0.28);
+        --font-display: 'Spectral', Georgia, 'Times New Roman', serif;
+        --font-ui: 'Public Sans', system-ui, -apple-system, sans-serif;
+        color-scheme: dark;
+      }
+      [data-leaf='charcoal'] { --leaf: #161616; --leaf-raised: #202020; --leaf-edge: #0E0E0E; }
+      [data-leaf='forest'] { --leaf: #111A15; --leaf-raised: #1A251F; --leaf-edge: #0B110D; }
+      [data-leaf='wine'] { --leaf: #1C1115; --leaf-raised: #271A1F; --leaf-edge: #120A0D; }
+      [data-leaf='walnut'] { --leaf: #1B1612; --leaf-raised: #26201A; --leaf-edge: #120E0B; }
+      [data-leaf='navy'] { --leaf: #0F1A2B; --leaf-raised: #18253A; --leaf-edge: #09111D; }
+
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; background: var(--leaf); color: var(--on-leaf); font-family: var(--font-display); line-height: 1.6; }
+      button { font: inherit; color: inherit; }
+      :focus-visible { outline: 2px solid var(--brass); outline-offset: 4px; }
+
+      header { padding: 4rem 1rem 2rem; text-align: center; }
+      h1 { margin: 0; font-size: clamp(2.2rem, 7vw, 4rem); font-weight: 400; line-height: 1.15; }
+      .subtitle { margin: 0.5rem 0 0; color: var(--on-leaf-soft); font-family: var(--font-ui); font-size: 0.9rem; }
+      .problem { max-width: 36rem; margin: 2rem auto; padding: 1rem 1.5rem; border-left: 2px solid #B4654A; font-family: var(--font-ui); }
+
+      main { max-width: 80rem; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 4rem) 4rem; }
+      .spread { display: grid; gap: 1.5rem; margin-block-start: 6rem; }
+      .spread:first-child { margin-block-start: 2rem; }
+      .spread__when { margin: 0; color: var(--on-leaf-soft); font-family: var(--font-ui); font-size: 0.8rem; text-align: center; }
+      @media (orientation: landscape) and (min-width: 48rem) {
+        .spread { grid-template-columns: 1fr 1fr; gap: 3rem; align-items: start; }
+        .spread__when { grid-column: 1 / -1; }
+      }
+
+      /* A print held by photo corners, in a 4:3 space; it fills the space. */
+      .mount { position: relative; aspect-ratio: 4 / 3; }
+      .print { position: absolute; inset: 0; padding: 0.5rem; border-radius: 2px; background: var(--photo-paper);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 0 1px 2px rgba(0,0,0,0.55), 0 10px 28px rgba(0,0,0,0.38); }
+      .print img, .print video { display: block; width: 100%; height: 100%; object-fit: cover; background: var(--leaf-edge); }
+      .print img { cursor: zoom-in; }
+      [data-frame='polaroid'] .print { padding: 0.5rem 0.5rem 2rem; }
+      [data-frame='borderless'] .print { padding: 0; background: var(--leaf-edge); }
+      .corner { position: absolute; width: 1.5rem; height: 1.5rem; background: var(--on-leaf-soft); }
+      .corner--ts { top: -0.25rem; left: -0.25rem; clip-path: polygon(0 0, 100% 0, 0 100%); }
+      .corner--te { top: -0.25rem; right: -0.25rem; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+      .corner--bs { bottom: -0.25rem; left: -0.25rem; clip-path: polygon(0 0, 0 100%, 100% 100%); }
+      .corner--be { bottom: -0.25rem; right: -0.25rem; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+      [data-frame='plain'] .corner, [data-frame='polaroid'] .corner, [data-frame='borderless'] .corner { display: none; }
+      .empty { display: grid; place-items: center; aspect-ratio: 4 / 3; color: var(--on-leaf-soft); font-family: var(--font-ui); font-size: 0.8rem; }
+      .badge { position: absolute; left: 1.5rem; bottom: 1rem; padding: 0.25rem 0.5rem; border-radius: 2px; background: var(--leaf); color: var(--on-leaf); font-family: var(--font-ui); font-size: 0.8rem; }
+
+      .numbers { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 0.75rem; font-family: var(--font-ui); font-size: 0.8rem; }
+      .numbers button { position: relative; width: 3rem; height: 3rem; padding: 0; border: 0; background: none; color: var(--on-leaf-soft); cursor: pointer; }
+      .numbers button[aria-current='true'] { color: var(--on-leaf); font-weight: 600; }
+      .numbers button[aria-current='true']::after { content: ''; position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.5rem; height: 1px; background: var(--brass); }
+
+      /* The handwritten page: ink (a transparent PNG) over warm paper. */
+      .page { position: relative; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 3px; background-color: var(--writing-paper); container-type: inline-size;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='32'%3E%3Crect y='31' width='8' height='1' fill='rgba(26,34,56,0.08)'/%3E%3C/svg%3E"); }
+      [data-paper='plain'] .page { background-image: none; }
+      [data-paper='white'] .page { background-image: none; background-color: var(--photo-paper); }
+      [data-paper='dotted'] .page { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16'%3E%3Ccircle cx='8' cy='8' r='1.2' fill='rgba(26,34,56,0.22)'/%3E%3C/svg%3E"); }
+      .page img { position: absolute; inset: 0; width: 100%; height: 100%; }
+      .watermark { position: absolute; max-width: 60%; color: var(--watermark); font-style: italic; font-size: 4.2cqi; line-height: 1.15; letter-spacing: 0.04em; pointer-events: none; }
+      .watermark[data-position^='top'] { top: 4.5cqi; }
+      .watermark[data-position^='bottom'] { bottom: 4.5cqi; }
+      .watermark[data-position$='-start'] { left: 5cqi; }
+      .watermark[data-position$='-end'] { right: 5cqi; text-align: right; }
+      .watermark[data-position='top'], .watermark[data-position='bottom'] { left: 0; right: 0; max-width: none; text-align: center; }
+      .watermark[data-position='center'] { inset: 0; display: grid; place-items: center; max-width: none; padding: 0 10%; font-size: 9cqi; text-align: center; }
+      .versions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.25rem; margin-top: 0.5rem; color: var(--on-leaf-soft); font-family: var(--font-ui); font-size: 0.8rem; }
+      .versions button { min-width: 2.75rem; min-height: 2.75rem; border: 0; background: none; color: var(--on-leaf-soft); cursor: pointer; }
+      .versions button[aria-current='true'] { color: var(--on-leaf); font-weight: 600; text-decoration: underline; text-decoration-color: var(--brass); text-underline-offset: 4px; }
+      .removed-note { position: absolute; top: 1rem; left: 1rem; padding: 0.25rem 0.5rem; background: var(--leaf); color: var(--on-leaf); font-family: var(--font-ui); font-size: 0.8rem; }
+
+      footer { padding: 2rem 1rem 4rem; color: var(--on-leaf-soft); font-family: var(--font-ui); font-size: 0.8rem; text-align: center; }
+      footer button { min-height: 2.75rem; padding: 0 1rem; border: 1px solid var(--on-leaf-soft); border-radius: 4px; background: none; cursor: pointer; }
+
+      dialog { width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 2rem; border: 0; background: var(--leaf-edge); color: var(--on-leaf); }
+      dialog[open] { display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; gap: 1rem; }
+      dialog::backdrop { background: var(--leaf-edge); }
+      dialog img { max-width: 100%; max-height: 100%; }
+      dialog button { min-height: 2.75rem; padding: 0 1.5rem; border: 0; border-radius: 4px; background: var(--photo-paper); color: var(--ink); font-family: var(--font-ui); font-weight: 600; cursor: pointer; }
+    </style>
+    <script src="manifest.js"></script>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Guest book</h1>
+      <p class="subtitle" id="subtitle"></p>
+    </header>
+    <main id="album" aria-live="polite"></main>
+    <footer id="footer"></footer>
+    <dialog id="full" aria-label="Photo">
+      <img id="full-img" alt="" />
+      <form method="dialog"><button type="submit">Close</button></form>
+    </dialog>
+    <script>
+      (function () {
+        'use strict';
+        var data = window.GUESTBOOK_ARCHIVE;
+        var album = document.getElementById('album');
+
+        function el(tag, attrs, children) {
+          var node = document.createElement(tag);
+          if (attrs) for (var key in attrs) if (attrs[key] !== undefined && attrs[key] !== null) node.setAttribute(key, attrs[key]);
+          (children || []).forEach(function (child) {
+            node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
+          });
+          return node;
+        }
+
+        if (!data || data.format !== 'guestbook-archive') {
+          album.appendChild(el('p', { class: 'problem' }, ['manifest.js was not found beside this file, so there is nothing to show. Keep viewer.html in the same folder as manifest.js, photos/, videos/ and canvases/.']));
+          return;
+        }
+
+        // The album's look as it was last saved; anything unknown falls back to the designed album.
+        var CHOICES = {
+          leaf: ['midnight', 'charcoal', 'forest', 'wine', 'walnut', 'navy'],
+          frame: ['corners', 'plain', 'polaroid', 'borderless'],
+          paper: ['ruled', 'plain', 'white', 'dotted'],
+          position: ['top-start', 'top', 'top-end', 'center', 'bottom-start', 'bottom', 'bottom-end']
+        };
+        var saved = data.looks.length ? data.looks[data.looks.length - 1].look || {} : {};
+        function choose(list, value) { return list.indexOf(value) >= 0 ? value : list[0]; }
+        var look = {
+          leaf: choose(CHOICES.leaf, saved.leaf),
+          frame: choose(CHOICES.frame, saved.frame),
+          paper: choose(CHOICES.paper, saved.paper),
+          mark: saved.watermark && typeof saved.watermark.text === 'string' ? saved.watermark.text : '',
+          position: choose(CHOICES.position, saved.watermark && saved.watermark.position)
+        };
+        var root = document.documentElement;
+        root.setAttribute('data-leaf', look.leaf);
+        root.setAttribute('data-frame', look.frame);
+        root.setAttribute('data-paper', look.paper);
+
+        function longDate(ms, withTime) {
+          try {
+            return new Date(ms).toLocaleString(undefined, withTime ? { dateStyle: 'long', timeStyle: 'short' } : { dateStyle: 'long' });
+          } catch (e) {
+            return new Date(ms).toString();
+          }
+        }
+
+        if (data.couple) {
+          document.getElementById('title').textContent = data.couple;
+          document.title = data.couple + ' — guest book';
+        }
+        if (data.date) {
+          var parts = data.date.split('-');
+          document.getElementById('subtitle').textContent = longDate(new Date(+parts[0], +parts[1] - 1, +parts[2]).getTime(), false);
+        }
+
+        var full = document.getElementById('full');
+        var fullImg = document.getElementById('full-img');
+        function openPhoto(src, alt) {
+          fullImg.src = src;
+          fullImg.alt = alt;
+          if (full.showModal) full.showModal();
+          else window.open(src);
+        }
+
+        var showDeleted = false;
+
+        function mountFor(media, name) {
+          var wrap = el('div');
+          if (!media.length) {
+            wrap.appendChild(el('div', { class: 'empty' }, ['No photo or video']));
+            return wrap;
+          }
+          var index = 0;
+          var mount = el('div', { class: 'mount' });
+          var numbers = el('div', { class: 'numbers', role: 'group', 'aria-label': name + ', ' + media.length + (media.length === 1 ? ' item' : ' items') });
+          function show(i) {
+            index = i;
+            var item = media[i];
+            mount.textContent = '';
+            var print = el('div', { class: 'print' });
+            var label = (item.kind === 'video' ? 'Video' : 'Photo') + ' ' + (i + 1) + ' of ' + media.length + ', ' + name;
+            if (item.kind === 'video') {
+              print.appendChild(el('video', { src: item.original, poster: item.poster, controls: '', loop: '', playsinline: '', preload: 'metadata', 'aria-label': label }));
+            } else {
+              var img = el('img', { src: item.original, alt: label, loading: 'lazy' });
+              img.addEventListener('click', function () { openPhoto(item.original, label); });
+              print.appendChild(img);
+            }
+            if (item.kind === 'video' && item.durationMs) {
+              var seconds = Math.round(item.durationMs / 1000);
+              print.appendChild(el('span', { class: 'badge' }, [Math.floor(seconds / 60) + ':' + ('0' + (seconds % 60)).slice(-2)]));
+            }
+            if (item.removed) print.appendChild(el('span', { class: 'removed-note' }, ['Deleted on the day']));
+            mount.appendChild(print);
+            ['ts', 'te', 'bs', 'be'].forEach(function (c) { mount.appendChild(el('span', { class: 'corner corner--' + c, 'aria-hidden': 'true' })); });
+            Array.prototype.forEach.call(numbers.children, function (button, n) { button.setAttribute('aria-current', n === i ? 'true' : 'false'); });
+          }
+          if (media.length > 1) {
+            media.forEach(function (_, i) {
+              var button = el('button', { type: 'button', 'aria-label': 'Show item ' + (i + 1) + ' of ' + media.length }, [String(i + 1)]);
+              button.addEventListener('click', function () { show(i); });
+              numbers.appendChild(button);
+            });
+          }
+          show(index);
+          wrap.appendChild(mount);
+          if (media.length > 1) wrap.appendChild(numbers);
+          return wrap;
+        }
+
+        function pageFor(canvases, name) {
+          var wrap = el('div');
+          var page = el('div', { class: 'page' });
+          wrap.appendChild(page);
+          var versions = el('div', { class: 'versions', role: 'group', 'aria-label': 'Versions of the page' });
+          function show(i) {
+            page.textContent = '';
+            if (look.mark) page.appendChild(el('span', { class: 'watermark', 'data-position': look.position, 'aria-hidden': 'true' }, [look.mark]));
+            if (canvases.length) {
+              var c = canvases[i];
+              page.appendChild(el('img', { src: c.png, alt: 'Handwritten page, ' + name + (canvases.length > 1 ? ', version ' + c.version + ' of ' + canvases.length : ''), loading: 'lazy' }));
+            }
+            Array.prototype.forEach.call(versions.querySelectorAll('button'), function (button, n) { button.setAttribute('aria-current', n === i ? 'true' : 'false'); });
+          }
+          if (canvases.length > 1) {
+            versions.appendChild(document.createTextNode('Versions:'));
+            canvases.forEach(function (c, i) {
+              var button = el('button', { type: 'button', 'aria-label': 'Version ' + c.version + ', saved ' + longDate(c.createdAt, true) }, [String(c.version)]);
+              button.addEventListener('click', function () { show(i); });
+              versions.appendChild(button);
+            });
+            wrap.appendChild(versions);
+          }
+          // The latest version is the page; earlier ones are a tap away.
+          show(Math.max(0, canvases.length - 1));
+          return wrap;
+        }
+
+        function render() {
+          album.textContent = '';
+          var shown = 0;
+          data.entries.forEach(function (entry) {
+            var media = entry.media.filter(function (m) { return showDeleted || !m.removed; });
+            if (!media.length && !entry.canvases.length) return;
+            shown++;
+            var name = 'Spread ' + shown;
+            var spread = el('section', { class: 'spread', 'aria-label': name });
+            spread.appendChild(el('p', { class: 'spread__when' }, [longDate(entry.createdAt, true)]));
+            spread.appendChild(mountFor(media, name));
+            spread.appendChild(pageFor(entry.canvases, name));
+            album.appendChild(spread);
+          });
+          if (!shown) album.appendChild(el('p', { class: 'problem' }, ['The album has nothing in it yet.']));
+        }
+
+        var removedCount = data.entries.reduce(function (n, e) { return n + e.media.filter(function (m) { return m.removed; }).length; }, 0);
+        var footer = document.getElementById('footer');
+        footer.appendChild(el('p', null, ['Archived ' + longDate(data.exportedAt, true) + '.']));
+        if (removedCount) {
+          var toggle = el('button', { type: 'button', 'aria-pressed': 'false' }, ['Show the ' + removedCount + (removedCount === 1 ? ' item' : ' items') + ' deleted on the day']);
+          toggle.addEventListener('click', function () {
+            showDeleted = !showDeleted;
+            toggle.setAttribute('aria-pressed', String(showDeleted));
+            toggle.textContent = showDeleted ? 'Hide deleted items' : 'Show the ' + removedCount + (removedCount === 1 ? ' item' : ' items') + ' deleted on the day';
+            render();
+          });
+          footer.appendChild(toggle);
+        }
+        render();
+      })();
+    </script>
+  </body>
+</html>

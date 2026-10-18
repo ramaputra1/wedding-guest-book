@@ -326,12 +326,29 @@ A GitHub Action runs nightly and on demand, writing to a **private repository**:
 
 ```
 archive/
-  manifest.json      every entry, media item and canvas, with timestamps and device
-  photos/            original JPEGs
-  videos/            original MP4s
-  canvases/          PNGs + stroke JSON
-  viewer.html        self-contained offline album
+  manifest.json      every entry, media item (deleted ones marked) and canvas version,
+                     every saved look; each file's size and SHA-256
+  manifest.js        the same data as a script, so viewer.html opens from file://
+  viewer.html        self-contained offline album — zero dependencies
+  photos/ videos/    the original files, at their R2 keys            (Git LFS)
+  thumbs/ posters/   thumbnails and video poster frames             (Git LFS)
+  canvases/          each page version: PNG (Git LFS) + stroke JSON (plain git)
+  fonts/             the album's two typefaces and their licences
+  README.md, .gitattributes
 ```
+
+**How it runs** (Phase 6):
+- `.github/workflows/archive.yml` runs every night at 19:23 UTC (02:23 WIB), and on demand. It runs `scripts/export-archive.ts`, then commits and pushes to the archive repository: the real album to its `main` branch, the test album to its `test` branch.
+- **Access.** The export reads D1 and R2 through Wrangler, with a **read-only** Cloudflare token (D1 Read, R2 Read): the nightly job cannot change the album. It writes only to the archive repository, with a fine-grained token scoped to that repository alone.
+- **Incremental.** R2 keys are never reused, so a file already in the archive is kept and only new ones are downloaded.
+- **No LFS download each night.** The job clones the archive without downloading LFS content (`--skip-smudge`), so old media stays as LFS pointers and the 10 GiB monthly LFS bandwidth is not spent nightly. The export reads each pointer's SHA-256 and size instead.
+- **Validation.** After every export the manifest is checked against the folder: every named file listed, present and matching its SHA-256, and nothing unaccounted for. A file the database names but R2 lacks is recorded under `missing` and turns the run red — after committing everything else.
+- **Pruned files.** A file the database no longer names leaves the working tree; git history still has it.
+
+**Restore** is `scripts/restore-archive.ts` (docs/RUNBOOK.md, sections 4–7):
+- **Dry run by default.** `--apply` writes, and `--production` is also required for the real album.
+- **Never overwrites.** It uploads only files storage lacks, after checking their SHA-256, and only then inserts missing rows with `INSERT OR IGNORE`. Deleted items stay deleted.
+- **Owner's credentials only.** Writes use the owner's own `wrangler login`; the nightly token cannot write.
 
 Three properties make this a real backup rather than a gesture:
 
