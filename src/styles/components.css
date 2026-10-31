@@ -877,15 +877,20 @@
  * Wide, it is a column flush to the right edge.
  * ------------------------------------------------------------------------- */
 
-.writer {
+/* The bar's height lives on the root, so the page's own scrolling can
+   allow for it too (scroll-padding, below). */
+:root:has(.writer) {
   /* Room for the bottom bar: the shutter plus its padding, plus the home
      indicator on phones. */
   --rail-bar: calc(var(--space-8) + var(--space-3) * 2);
-  padding-block-end: calc(var(--rail-bar) + env(safe-area-inset-bottom, 0px));
 }
 
-.writer:has(.rail[data-open='false']) {
+:root:has(.rail[data-open='false']) {
   --rail-bar: calc(var(--space-7) + var(--space-3) * 2);
+}
+
+.writer {
+  padding-block-end: calc(var(--rail-bar) + env(safe-area-inset-bottom, 0px));
 }
 
 .writer__album {
@@ -1017,7 +1022,7 @@
 /* Phones: the bottom bar takes two rows — the choices above, the shutter
    and the destination below — so it never overflows a narrow screen. */
 @media (max-width: 39.999rem) and (orientation: portrait) {
-  .writer {
+  :root:has(.writer) {
     --rail-bar: calc(var(--space-8) + var(--space-7) + var(--space-3) * 3);
   }
 
@@ -1179,6 +1184,13 @@
 
   .writer {
     padding-block-end: calc(var(--rail-bar) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Folded, the bar and its status strip cover the bottom of the screen.
+     Whatever the page scrolls to — a control reached with Tab, the tools
+     under a page — stops above them, never behind (WCAG 2.4.11). */
+  :root:has(.writer) {
+    scroll-padding-block-end: calc(var(--rail-bar) + var(--space-6) + env(safe-area-inset-bottom, 0px));
   }
 }
 

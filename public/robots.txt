@@ -1,0 +1,6 @@
+# The album is for guests to find by its link. The two writer pages and the
+# API are working parts, not pages to list.
+User-agent: *
+Disallow: /ipad1
+Disallow: /ipad2
+Disallow: /api/

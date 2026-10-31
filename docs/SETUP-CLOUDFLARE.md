@@ -151,21 +151,53 @@ For signing in locally, copy `.env.example` to `.dev.vars` and fill it with **lo
 
 ---
 
-## 8. Archive repository — before Phase 6
+## 8. Archive repository — Phase 6
 
-A **separate private repository**, not this one.
-
-1. Create a private repo, e.g. `wedding-archive`.
-2. Enable Git LFS on it.
-3. Create a **fine-grained personal access token** scoped to that repository only, with **Contents: read & write**. Nothing else.
-4. In *this* repository: **Settings → Secrets and variables → Actions**, add:
-
-   | Secret | Value |
-   |---|---|
-   | `ARCHIVE_REPO` | `your-username/wedding-archive` |
-   | `ARCHIVE_TOKEN` | the fine-grained token |
+Follow **docs/RUNBOOK.md, section 1**. It covers the private repository, a fine-grained GitHub token for it alone, a **read-only** Cloudflare token, and three secrets and one variable on this repository (`ARCHIVE_REPO` is a *variable*, not a secret).
 
 Keeping the archive in its own repository is deliberate: you can delete, move, or hand over either one without touching the other.
+
+---
+
+## 9. Go live — Phase 7
+
+Production is the `main` branch on Cloudflare Pages. Do these in order.
+
+**a. The real database has every table.** Each line should end with ✅ or say there is nothing to apply:
+
+```bash
+npx wrangler d1 migrations apply wedding-guestbook --remote
+```
+
+Without this, Delete and Settings fail on the real site.
+
+**b. Production secrets.** Workers & Pages → the project → **Settings** → **Variables and Secrets**. Check that **Production** has `WRITER_PASSPHRASE_HASH` and `SESSION_SIGNING_KEY`, both set in step 6.
+
+**c. Merge to `main`** (via `dev-acceptance`, as usual). Then wait for **Deployments → Production** to show **Success**.
+
+**d. Custom domains on `ramaap.com`.** The domain is already on Cloudflare, so Pages sets up DNS and HTTPS by itself.
+
+| Site | Address | Serves |
+|---|---|---|
+| The real album | `wedding.ramaap.com` | `main` |
+| The test album | `wedding-dev.ramaap.com` | `dev-acceptance` |
+
+One level below `ramaap.com` on purpose. Cloudflare's free certificate covers `*.ramaap.com`. A name two levels down, like `dev.wedding.ramaap.com`, would need a paid certificate.
+
+1. Workers & Pages → the project → **Custom domains** → **Set up a custom domain** → `wedding.ramaap.com` → **Continue** → **Activate domain**. Wait for **Active**; this usually takes a few minutes.
+2. Again, **Set up a custom domain** → `wedding-dev.ramaap.com` → Activate.
+3. Point the test address at the test branch:
+   1. Go to **ramaap.com → DNS → Records**.
+   2. Edit the `CNAME` record named `wedding-dev`.
+   3. Change its **Target** from `<project>.pages.dev` to `dev-acceptance.<project>.pages.dev`, and save.
+
+   Without this step, both addresses would show the real album.
+
+**e. Check it is live.** Open `https://wedding.ramaap.com` and `https://wedding.ramaap.com/ipad1`: both show the padlock, and signing in works. Then open `https://wedding-dev.ramaap.com`: it is the test album.
+
+The `*.pages.dev` addresses keep working too.
+
+**On the custom domain the public album is cached for 30 seconds at Cloudflare's edge,** as designed (on `*.pages.dev` it is not). A guest may see a new photo up to 30 s after it is saved; the iPads always see it at once.
 
 ---
 

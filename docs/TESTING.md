@@ -100,6 +100,10 @@ Viewports: iPad landscape (1180×820), iPad portrait (820×1180), phone (390×84
 
 ---
 
+**Phase 7 journeys:**
+- **`journey.spec.ts`** — the core journey above, on `/ipad1` and on `/ipad2`, ending on the public album. Also both iPads capturing at the same moment.
+- **`public.spec.ts`** — from the public page's own context, every write endpoint (12 attempts, including a body or query claiming to be an iPad) answers 401, and nothing changes. Using the public album sends only GET requests.
+
 ## 5. Accessibility
 
 Automated scan plus a manual pass — the scan catches maybe half of what matters.
@@ -112,7 +116,33 @@ Automated scan plus a manual pass — the scan catches maybe half of what matter
 - Nothing conveys meaning by color alone
 - The canvas has a text alternative
 
+**How it is run (Phase 7):**
+- **`a11y.spec.ts`** — axe-core (dev dependency `axe-core`, pinned) against WCAG 2.0/2.1/2.2 A and AA on every screen and state:
+  - the cover, the public album and its viewer
+  - sign-in
+  - the writer's album with the camera aimed
+  - a page being written
+  - Settings, and the Delete and Clear dialogs
+  - the archive's `viewer.html`
+
+  A control test plants violations and checks they are caught.
+- **`contrast.spec.ts`** — axe reports contrast only as "incomplete" wherever a pseudo-element or overlapping layer is near the text. That covers the underlined numbers, Delete, the writing tools and the whole Settings sheet. This test measures every visible text against the solid colours actually behind it, for AA, on the iPad with three album colours and on the public album. It also checks that each screen measured enough text to mean something. The cover's names sit on the photograph and were measured per pixel in Phase 1.
+- **`keyboard.spec.ts`** — Tab through each screen:
+  - every stop has a visible focus indicator and every control is reachable
+  - dialogs hold focus, and Escape returns it
+  - "+", the shutter, a page and Delete all work by keyboard
+  - on a phone and an upright iPad, nothing reached with Tab sits behind the camera bar (WCAG 2.4.11)
+- **`responsive.spec.ts`** — at 320, 390, 820×1180, 1180×820, 1440 and 1920: no sideways scroll, every control at least 44 × 44, with screenshots for a look by eye.
+- **`motion.spec.ts`** — with reduced motion:
+  - nothing on either page has a transition or animation longer than a frame
+  - no lift, no smooth scroll, no autoplay
+  - the shutter ring still counts, being a clock
+
+  A control run without reduced motion shows the lift is there to be turned off.
+
 ---
+
+**Lighthouse** (Phase 7): run on `/` against the built site, `npx lighthouse@13.5.0 <url> --only-categories=performance,accessibility,best-practices,seo` (mobile) and with `--preset=desktop`. It is not a dependency: run it when the cover changes.
 
 ## 6. What only a real iPad can prove
 
@@ -128,7 +158,7 @@ Automated scan plus a manual pass — the scan catches maybe half of what matter
 | Venue wifi | Can't be simulated | A 10 MB video uploads in acceptable time |
 | Session persistence | Needs a real app close/reopen | Close Safari fully, reopen, still signed in |
 
-Every phase report collects its device-test items; Phase 7 consolidates them into the Phase 8 checklist.
+Every phase report collects its device-test items; Phase 7 consolidated them into **docs/PHASE-8-CHECKLIST.md**, rewritten for the app as it now is.
 
 ---
 

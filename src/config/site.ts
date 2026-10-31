@@ -135,7 +135,11 @@ export interface SettingsCopy {
 export interface RemoveCopy {
   /** The word on the button, top right of each photo or video. */
   label: string;
-  /** Its full name: "Delete this photo" / "Delete this video". */
+  /**
+   * What goes, added after the visible word for assistive technology:
+   * "Delete (1), this photo". The name always starts with the visible label
+   * (WCAG 2.5.3), so a voice-control user can say what they see.
+   */
   buttonPhoto: string;
   buttonVideo: string;
   questionPhoto: string;
@@ -352,8 +356,8 @@ export const site = {
     },
     remove: {
       label: "Delete (1)",
-      buttonPhoto: "Delete this photo",
-      buttonVideo: "Delete this video",
+      buttonPhoto: "this photo",
+      buttonVideo: "this video",
       questionPhoto: "Delete this photo?",
       questionVideo: "Delete this video?",
       detail:

@@ -243,6 +243,17 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D22 — Phase 7: domains, one test dependency, and the public prints
+
+- **Domains (owner's `ramaap.com`, on Cloudflare).** `wedding.ramaap.com` serves `main`; `wedding-dev.ramaap.com` serves `dev-acceptance`. Both sit one level below the apex, because the free Universal certificate covers `*.ramaap.com` only, and `dev.wedding.ramaap.com` would need a paid one.
+- **`axe-core` added as a dev dependency** for the accessibility scan. It runs only in tests and never ships to the site; there is no account or key. Pinned to 4.13.0, the newest release more than two weeks old (4.14.0 was 12 days old).
+- **Lighthouse is not a dependency.** It is run on demand with a pinned `npx lighthouse@13.5.0`.
+- **The public album serves sharper prints.** A `srcset` lets a large or Retina screen take the photo itself (or a video's full poster) instead of the 640 px thumbnail. The writer iPads keep the thumbnail, so the venue wifi is spent on uploads, not on re-downloading the album.
+- **Clearing the rehearsal is a script, and it refuses without an archive.** `scripts/clear-album.ts` is the one thing that erases. It runs only with `--apply` (and `--production` for the real album), and only when an archive exported after the newest entry holds everything it would remove, so `restore-archive.ts --all` can undo it. The drill test does exactly that.
+- **GitHub Actions pinned to commit SHAs** (v4.4.0 of `checkout` and `setup-node`).
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.

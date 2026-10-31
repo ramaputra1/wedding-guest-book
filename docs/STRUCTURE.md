@@ -26,6 +26,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   ├── DECISIONS.md              # choices made, options rejected, why
 │   ├── SETUP-CLOUDFLARE.md       # one-time account setup
 │   ├── RUNBOOK.md                # written in Phase 6 — operations + recovery
+│   ├── PHASE-8-CHECKLIST.md      # every device test, for the iPad rehearsal
 │   ├── templates/
 │   │   └── PHASE-REPORT.md
 │   └── reports/                  # one report per completed phase
@@ -33,6 +34,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 ├── public/
 │   ├── fonts/                    # self-hosted Spectral + Public Sans (woff2)
 │   ├── _headers                  # Cloudflare Pages cache headers
+│   ├── robots.txt                # keeps /ipad1, /ipad2 and /api/ out of search results
 │   └── favicon.svg
 │
 ├── src/
@@ -150,6 +152,7 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 │   ├── hash-passphrase.mjs       # generate WRITER_PASSPHRASE_HASH
 │   ├── export-archive.ts         # D1 + R2 → archive folder (manifest, files, viewer); --check validates
 │   ├── restore-archive.ts        # archive → D1 + R2: only what is missing, dry run unless --apply
+│   ├── clear-album.ts            # empty an album (the rehearsal's test entries); needs an up-to-date archive
 │   └── archive/
 │       ├── store.ts              # D1 + R2 through wrangler: local, test or production
 │       ├── manifest.ts           # manifest.json's shape, building it, validating an archive

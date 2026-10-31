@@ -33,7 +33,7 @@ let entryId: string;
 const ids = { photo: '', video: '', deleted: '', v1: '', v2: '' };
 
 /** Runs one of the scripts as the owner would, and records command and output. */
-async function script(name: 'export-archive' | 'restore-archive', args: string[]): Promise<{ code: number; out: string }> {
+async function script(name: 'export-archive' | 'restore-archive' | 'clear-album', args: string[]): Promise<{ code: number; out: string }> {
   const argv = ['--experimental-strip-types', '--no-warnings', `scripts/${name}.ts`, ...args];
   let code = 0;
   let out = '';
@@ -251,4 +251,46 @@ describe('restore drill', () => {
     expect(result.code, result.out).toBe(0);
     expect(result.out).toMatch(/files: 0 downloaded, \d+ already here/);
   }, 240_000);
+});
+
+describe('emptying the album before the wedding (clear-album.ts)', () => {
+  it('refuses without an up-to-date archive, empties the album with one, and restore --all brings everything back', async () => {
+    const local = ['--target', 'local', '--persist-to', inject('stateDir')];
+    const countAll = async () => (await freshEntries(cookie)).reduce((n, e) => n + 1 + e.media.length, 0);
+    const before = await freshEntries(cookie);
+    expect(before.length).toBeGreaterThan(0);
+
+    // No archive named: a dry run may look, but --apply is refused.
+    const noArchive = await script('clear-album', [...local, '--apply']);
+    expect(noArchive.code).toBe(1);
+    expect(noArchive.out).toContain('Name an up-to-date archive first');
+
+    // An archive that misses the newest entry is refused too.
+    const late = await createEntry(cookie, 'ipad1');
+    const stale = await script('clear-album', [...local, '--archive', archive, '--apply']);
+    expect(stale.code).toBe(1);
+    expect(stale.out).toContain('Run the export first');
+
+    // Up to date: the dry run says so and changes nothing.
+    expect((await script('export-archive', [...local, '--out', archive])).code).toBe(0);
+    const dry = await script('clear-album', [...local, '--archive', archive]);
+    expect(dry.out).toContain('Dry run: nothing was changed');
+    expect(await countAll()).toBeGreaterThan(0);
+
+    // Emptied for real: no entries, no files.
+    const done = await script('clear-album', [...local, '--archive', archive, '--apply']);
+    expect(done.code, done.out).toBe(0);
+    expect(await freshEntries(cookie)).toEqual([]);
+    const photo = manifest().entries.find((e) => e.id === entryId)!.media[0];
+    expect((await call(`/api/files/${photo.original}`)).status).toBe(404);
+
+    // And back, all of it, from the archive.
+    const back = await script('restore-archive', ['--from', archive, ...local, '--all', '--apply']);
+    expect(back.code, back.out).toBe(0);
+    const restored = await freshEntries(cookie);
+    expect(restored.map((e) => [e.id, e.media.map((m) => m.id), e.canvas?.version ?? null])).toEqual(
+      before.map((e) => [e.id, e.media.map((m) => m.id), e.canvas?.version ?? null]).concat([[late, [], null]]),
+    );
+    expect(await fileBytes(photo.original)).toEqual(new Uint8Array(readFileSync(join(archive, photo.original))));
+  }, 600_000);
 });
