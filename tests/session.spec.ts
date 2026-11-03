@@ -57,8 +57,17 @@ describe('passphrases', () => {
     expect(await verifyPassphrase(passphrase, hash)).toBe(true);
   });
 
-  it('the script refuses a short passphrase and a command-line argument', () => {
+  it('the script takes a PIN of six digits or more, and its hash is accepted', async () => {
+    const run = spawnSync('node', ['scripts/hash-passphrase.mjs'], { input: '191226\n', encoding: 'utf8' });
+    expect(run.status).toBe(0);
+    expect(await verifyPassphrase('191226', run.stdout.trim())).toBe(true);
+    expect(await verifyPassphrase('191227', run.stdout.trim())).toBe(false);
+  });
+
+  it('the script refuses a PIN under six digits, a short passphrase, and a command-line argument', () => {
+    expect(spawnSync('node', ['scripts/hash-passphrase.mjs'], { input: '19122\n', encoding: 'utf8' }).status).toBe(1);
     expect(spawnSync('node', ['scripts/hash-passphrase.mjs'], { input: 'short\n', encoding: 'utf8' }).status).toBe(1);
+    expect(spawnSync('node', ['scripts/hash-passphrase.mjs'], { input: 'abc123\n', encoding: 'utf8' }).status).toBe(1);
     expect(spawnSync('node', ['scripts/hash-passphrase.mjs', 'on the command line'], { encoding: 'utf8' }).status).toBe(1);
   });
 });

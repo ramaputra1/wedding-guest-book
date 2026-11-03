@@ -62,6 +62,7 @@ export type ApiErrorCode =
   | 'bad_request'
   | 'unauthorized'
   | 'wrong_passphrase'
+  | 'too_many_attempts'
   | 'cross_origin'
   | 'not_found'
   | 'entry_not_found'

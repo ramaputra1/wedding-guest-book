@@ -4,7 +4,11 @@
  *
  *   node scripts/hash-passphrase.mjs
  *
- * Asks for the passphrase twice with the typing hidden, so it never lands in
+ * Takes a PIN of at least 6 digits, or a passphrase of at least 16
+ * characters. A PIN is safe only because the server limits wrong guesses
+ * (migration 0004, functions/api/auth/login.ts).
+ *
+ * Asks for it twice with the typing hidden, so it never lands in
  * shell history or on screen. Piped input also works (one line), for tests.
  * Only the hash is printed to stdout; put that in the Cloudflare dashboard as
  * an Encrypted variable. Keep the passphrase itself in a password manager.
@@ -15,6 +19,7 @@ import { webcrypto as crypto } from 'node:crypto';
 
 const ITERATIONS = 20_000; // keep in step with PASSPHRASE_ITERATIONS in lib-server/passphrase.ts
 const MIN_LENGTH = 16;
+const MIN_PIN_DIGITS = 6;
 
 const toBase64Url = (bytes) => Buffer.from(bytes).toString('base64url');
 
@@ -64,15 +69,15 @@ async function readPiped() {
 
 async function main() {
   if (process.argv.length > 2) {
-    console.error('Do not pass the passphrase as an argument: it would be saved in your shell history.');
+    console.error('Do not pass the PIN or passphrase as an argument: it would be saved in your shell history.');
     console.error('Run  node scripts/hash-passphrase.mjs  and type it when asked.');
     process.exit(1);
   }
 
   let passphrase;
   if (process.stdin.isTTY) {
-    passphrase = await readHidden('Passphrase (typing is hidden): ');
-    const again = await readHidden('Same passphrase again: ');
+    passphrase = await readHidden('PIN (at least 6 digits) or passphrase — typing is hidden: ');
+    const again = await readHidden('The same again: ');
     if (again !== passphrase) {
       console.error("The two didn't match. Nothing was generated. Run it again.");
       process.exit(1);
@@ -81,9 +86,14 @@ async function main() {
     passphrase = await readPiped();
   }
 
-  if (passphrase.length < MIN_LENGTH) {
-    console.error(`That passphrase is ${passphrase.length} characters. Use at least ${MIN_LENGTH} — four or five`);
-    console.error('ordinary words with spaces is long, strong, and easy to type on an iPad.');
+  const isPin = /^[0-9]+$/.test(passphrase);
+  if (isPin && passphrase.length < MIN_PIN_DIGITS) {
+    console.error(`That PIN is ${passphrase.length} digits. Use at least ${MIN_PIN_DIGITS}.`);
+    process.exit(1);
+  }
+  if (!isPin && passphrase.length < MIN_LENGTH) {
+    console.error(`Use a PIN of at least ${MIN_PIN_DIGITS} digits, or a passphrase of at least ${MIN_LENGTH} characters`);
+    console.error(`(that one is ${passphrase.length} characters).`);
     process.exit(1);
   }
 

@@ -14,11 +14,12 @@ Every command runs in a terminal **in the application folder** (`wedding-guest-b
 | A whole spread is gone | [6](#6-a-spread-is-gone) |
 | Everything is gone, or a new Cloudflare account | [7](#7-restore-everything) |
 | An iPad is lost or stolen | [8](#8-an-ipad-is-lost) |
-| Changing the passphrase | [9](#9-change-the-passphrase) |
+| Changing the PIN | [9](#9-change-the-pin) |
 | A token or key expires, or may have leaked | [10](#10-rotate-a-secret) |
 | "Are we about to be charged?" | [11](#11-check-usage-and-billing) |
 | Wrangler says error 7403 / not authorized | [12](#12-wrangler-cannot-reach-the-account) |
 | Clearing the rehearsal's test entries before the wedding | [13](#13-empty-the-album-before-the-wedding) |
+| "Too many wrong tries" and you need to sign in now | [14](#14-sign-in-is-locked) |
 
 **Two databases, two buckets.**
 
@@ -234,21 +235,21 @@ This signs out **both** iPads at once. Anyone holding the lost one can then do n
 2. Go to https://dash.cloudflare.com → **Workers & Pages** → the project → **Settings** → **Variables and Secrets**.
 3. Edit **`SESSION_SIGNING_KEY`** under **Production**, paste the new value, and save.
 4. **Deployments** → the latest **Production** deployment → **⋯** → **Retry deployment**. New values apply from the next deployment.
-5. Sign the remaining iPad in again with the passphrase.
+5. Sign the remaining iPad in again with the PIN.
 
-Also change the passphrase (section 9) if the lost iPad could have it saved.
+Also change the PIN (section 9) if the lost iPad could have it saved.
 
 ---
 
-## 9. Change the passphrase
+## 9. Change the PIN
 
-1. In a terminal: `node scripts/hash-passphrase.mjs`. Type the new passphrase twice; it is not shown. Copy the hash it prints.
+1. In a terminal: `node scripts/hash-passphrase.mjs`. Type the new PIN twice (at least 6 digits; a passphrase of 16+ characters also works). It is not shown. Copy the hash it prints.
 2. Cloudflare → **Workers & Pages** → the project → **Settings** → **Variables and Secrets** → edit **`WRITER_PASSPHRASE_HASH`**. Do it for **Production**, and for **Preview** if you want the test site changed too.
 3. **Retry** the latest deployment, as in 8.4.
 
-iPads that are already signed in **stay signed in**. To make them sign in again with the new passphrase, also do section 8.
+iPads that are already signed in **stay signed in**. To make them sign in again with the new PIN, also do section 8.
 
-Never send the passphrase or its hash to anyone, Claude included.
+Never send the PIN or its hash to anyone, Claude included. Avoid a PIN anyone could guess from the invitation, such as the wedding date: it is the first thing a guesser would try.
 
 ---
 
@@ -319,4 +320,23 @@ After the rehearsal (docs/PHASE-8-CHECKLIST.md), the real album holds test photo
 4. Open the site: the album is empty and ready.
 
 **Changed your mind?** Everything erased is in that archive: section 7, `restore-archive.ts --all`.
+
+---
+
+## 14. Sign-in is locked
+
+After 10 wrong PINs within 15 minutes, new sign-ins are refused for up to 15 minutes; the page says how long. iPads already signed in carry on as normal. Usually the right move is to wait.
+
+**If you must sign in now** — and only if the wrong tries were yours:
+
+1. Cloudflare → **Storage & Databases** → **D1** → **`wedding-guestbook`** → **Console**.
+2. Paste and **Run**:
+   ```sql
+   DELETE FROM login_failures
+   ```
+3. Sign in again with the right PIN.
+
+**If the wrong tries were not yours,** someone is guessing:
+1. Change the PIN now (section 9).
+2. Then do section 8, so no session made with the old PIN survives.
 

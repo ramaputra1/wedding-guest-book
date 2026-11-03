@@ -17,6 +17,10 @@ export interface Env {
   MAX_VIDEO_DURATION_MS?: string;
   MAX_VIDEO_BYTES?: string;
   MAX_PHOTO_BYTES?: string;
+  /** Wrong PINs allowed in the window before new sign-ins are refused. */
+  LOGIN_MAX_FAILURES?: string;
+  /** The window, in seconds: also how long a lock lasts at most. */
+  LOGIN_LOCK_SECONDS?: string;
 }
 
 /** What the middleware hands to handlers. */
@@ -29,6 +33,8 @@ export interface Limits {
   maxVideoDurationMs: number;
   maxVideoBytes: number;
   maxPhotoBytes: number;
+  loginMaxFailures: number;
+  loginLockSeconds: number;
 }
 
 function positiveInt(value: string | undefined, fallback: number): number {
@@ -43,5 +49,7 @@ export function limits(env: Env): Limits {
     maxVideoDurationMs: positiveInt(env.MAX_VIDEO_DURATION_MS, 15_000),
     maxVideoBytes: positiveInt(env.MAX_VIDEO_BYTES, 15_000_000),
     maxPhotoBytes: positiveInt(env.MAX_PHOTO_BYTES, 8_000_000),
+    loginMaxFailures: positiveInt(env.LOGIN_MAX_FAILURES, 10),
+    loginLockSeconds: positiveInt(env.LOGIN_LOCK_SECONDS, 900),
   };
 }

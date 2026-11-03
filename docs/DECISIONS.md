@@ -254,6 +254,21 @@ Full system in `docs/DESIGN.md`.
 
 ---
 
+## D23 — A six-digit PIN, with wrong guesses limited
+
+**Chosen (owner, before go-live):** the iPads sign in with a PIN of at least six digits instead of a 16-character passphrase.
+- The server keeps a log of wrong PINs (`login_failures`, migration 0004, additive).
+- After 10 wrong PINs in 15 minutes it refuses every new sign-in until the oldest ages out (`LOGIN_MAX_FAILURES`, `LOGIN_LOCK_SECONDS` in `wrangler.toml`).
+- The sign-in field brings up the number pad.
+
+**Why:** the owner found the passphrase too long to type. A PIN alone would be unsafe: a million guesses is a short script against a public `/ipad1`, and the guesses alone would exhaust the free plan's 100,000 daily requests. With the limit, a guesser needs years.
+
+**Trade-off, accepted:** the lock is global, so a guesser can keep *new* sign-ins locked. Signed-in iPads (sessions last 180 days) are unaffected, and the owner can lift a lock in the D1 console (RUNBOOK §14). A per-address lock was rejected: it gives an attacker with many addresses unlimited guesses.
+
+**Without migration 0004, sign-in is refused** rather than left without a limit.
+
+---
+
 ## Still open
 
 Nothing architectural. Outstanding items are content — names, date, hero photograph, domain — tracked in `docs/PHASES.md` under Phase 1.

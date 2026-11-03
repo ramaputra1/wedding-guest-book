@@ -59,10 +59,10 @@ The numbers are a carousel — one mount holds up to six items; on the writer iP
 | Route | Renders | Access |
 |---|---|---|
 | `/` | Landing + album, all entries from both devices, chronological. The album is rendered in the browser by the Preact island from `GET /api/entries` (DECISIONS D8, D13) | Public, read-only |
-| `/ipad1` | Album + writer controls, device identity `ipad1` | Passphrase |
-| `/ipad2` | Album + writer controls, device identity `ipad2` | Passphrase |
+| `/ipad1` | Album + writer controls, device identity `ipad1` | PIN |
+| `/ipad2` | Album + writer controls, device identity `ipad2` | PIN |
 
-`/ipad1` and `/ipad2` are **identity, not authorization**. They are guessable and must be treated as public knowledge. The route decides which device label a write carries; the signed cookie decides whether the write happens at all. A visitor who types `/ipad2` gets a passphrase prompt and nothing else.
+`/ipad1` and `/ipad2` are **identity, not authorization**. They are guessable and must be treated as public knowledge. The route decides which device label a write carries; the signed cookie decides whether the write happens at all. A visitor who types `/ipad2` gets a PIN prompt and nothing else.
 
 ---
 
@@ -162,7 +162,7 @@ All endpoints are Cloudflare Pages Functions under `functions/api/`.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| `POST` | `/api/auth/login` | — | Passphrase → signed session cookie |
+| `POST` | `/api/auth/login` | — | PIN → signed session cookie, with wrong guesses limited |
 | `POST` | `/api/auth/logout` | session | Clear the cookie |
 | `GET` | `/api/auth/session` | session | Whether this browser is signed in, and as which device (the cookie is HttpOnly, so the page cannot read it) |
 | `GET` | `/api/entries` | — | List entries with media and latest canvas |
@@ -188,13 +188,18 @@ Public reads of `/api/entries` are cached at Cloudflare's edge for 30 seconds (o
 
 ## Authentication
 
-A passphrase exchanged for a signed, HttpOnly session cookie.
+A PIN (six digits or more; a long passphrase also works) exchanged for a signed, HttpOnly session cookie.
 
-1. The passphrase is stored server-side **as a hash** in an encrypted environment variable. The plaintext never exists in the repository or the browser.
+1. The PIN is stored server-side **as a hash** in an encrypted environment variable. The plaintext never exists in the repository or the browser.
 2. `POST /api/auth/login` compares in constant time, then issues a cookie containing the device id and an expiry, signed with HMAC-SHA256 via Web Crypto.
 3. The cookie is `HttpOnly`, `Secure`, `SameSite=Lax`. Page JavaScript cannot read it, so an XSS bug cannot exfiltrate the session.
 4. Every mutating request is verified by middleware before reaching a handler.
 5. The TTL is long — 180 days by default — so you sign in once per iPad and never during the wedding.
+6. **Wrong guesses are limited.** A six-digit PIN is only a million possibilities, so the server keeps a log of wrong PINs (`login_failures`, migration 0004).
+   - **The lock.** After `LOGIN_MAX_FAILURES` (10) wrong PINs within `LOGIN_LOCK_SECONDS` (900), every new sign-in is refused (`429 too_many_attempts`, with `Retry-After`) until the oldest ages out. At that rate guessing the PIN takes years.
+   - **It is global, not per address,** so many addresses buy no extra guesses. It is checked before any hashing, so a flood of guesses costs little CPU.
+   - **The trade-off:** someone could keep new sign-ins locked, but iPads already signed in are not affected. The owner can lift a lock by hand (RUNBOOK §14).
+   - **Without migration 0004, sign-in is refused** (`503 migration_missing`) rather than left without a limit.
 
 **Revoking a lost iPad:** rotate `SESSION_SIGNING_KEY` in the Cloudflare dashboard. Every session on both devices dies immediately; sign the remaining iPad back in. This is faster and more complete than per-device revocation, and it needs no database change.
 

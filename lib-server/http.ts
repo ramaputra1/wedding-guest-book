@@ -12,8 +12,8 @@ export function json<T>(body: T, status = 200, headers: HeadersInit = {}): Respo
   return response;
 }
 
-export function error(status: number, code: ApiErrorCode, message: string): Response {
-  return json<ApiError>({ code, message }, status);
+export function error(status: number, code: ApiErrorCode, message: string, headers: Record<string, string> = {}): Response {
+  return json<ApiError>({ code, message }, status, headers);
 }
 
 export const errors = {

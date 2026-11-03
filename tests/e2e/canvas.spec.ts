@@ -7,7 +7,7 @@
  * palm — is listed in the phase report as NEEDS DEVICE TEST.
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
-import { addTo, cameraReady, openPage, queued, serverEntries, serverStats, signIn } from './helpers';
+import { addTo, cameraReady, openPage, queued, seedEntry, serverEntries, serverStats, signIn } from './helpers';
 
 const PEN = '.writing-page--live canvas.writing-page__pen';
 const INK = '.writing-page--live canvas.writing-page__ink';
@@ -524,4 +524,31 @@ test('Cancel, Save and Saved are underlined words, told apart by the underline\'
   await expect(save).toHaveAttribute('data-state', 'saved');
   await expect(save).toHaveCSS('color', 'rgb(160, 138, 82)'); // --brass
   await expect(save).toHaveCSS('text-decoration-color', 'rgb(160, 138, 82)');
+});
+
+test('a page reopened right after its save is confirmed — before the album re-reads — starts from the saved writing', async ({ page }) => {
+  const entryId = await seedEntry(page, 1);
+  await page.reload();
+  await openPage(page, entryId);
+  await deskInView(page);
+  await drawWithMouse(page, [0.1, 0.2], [0.6, 0.3]);
+
+  // Hold back the album's re-read that follows a confirmed save, to widen the moment in between.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route('**/api/entries', async (route) => {
+    await held;
+    await route.continue().catch(() => undefined);
+  });
+  const before = (await serverStats(page)).canvasVersions;
+  await page.locator('.writing-tool--save').click();
+  await expect.poll(async () => (await serverStats(page)).canvasVersions, { timeout: 60_000 }).toBe(before + 1);
+  await expect.poll(async () => (await queued(page)).length, { timeout: 60_000 }).toBe(0);
+  // This iPad's own copy is gone, and the album (which still says the page is blank) has not been re-read.
+  await expect.poll(() => draft(page, entryId)).toBeNull();
+
+  await openPage(page, entryId);
+  await expect.poll(() => strokeCount(page)).toBe(1);
+  release();
+  await page.unroute('**/api/entries');
 });

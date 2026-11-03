@@ -40,8 +40,10 @@ Everything a browser on a laptop cannot prove, from every phase report, in one p
 ## C. Signing in
 
 - [ ] `/ipad1` says **iPad 1**; `/ipad2` says **iPad 2**.
-- [ ] Wrong passphrase: a clear message, and the field keeps focus.
-- [ ] Right passphrase: the camera rail appears. The keyboard did not cover the field.
+- [ ] The field asks for the **PIN** and the iPad shows its **number pad**.
+- [ ] Wrong PIN: a clear message, and the field keeps focus.
+- [ ] Right PIN: the camera rail appears. The keyboard did not cover the field.
+- [ ] *(On the test site only:)* 10 wrong PINs → "Too many wrong tries. Try again in … minutes." The other iPad, already signed in, keeps working. RUNBOOK §14 lifts it.
 - [ ] **Close Safari completely** (swipe it away), reopen `/ipad1`: still signed in, no prompt.
 - [ ] *Before the wedding:* leave both iPads signed in for a week, then open them: still signed in.
 

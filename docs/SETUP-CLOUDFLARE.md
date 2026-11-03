@@ -87,15 +87,15 @@ openssl rand -base64 32
 
 Run it twice: one key for Production, a different one for Preview.
 
-### The passphrase hash
+### The PIN hash
 
-Choose a passphrase you'll type on each iPad once: **at least 16 characters**, ideally four or five ordinary words with spaces — long, strong, and easy on a touch keyboard. Store it in your password manager.
+Choose a PIN you'll type on each iPad once: **at least 6 digits**. It is safe because the server limits wrong guesses (migration 0004). A long passphrase of 16+ characters also works. Avoid the wedding date or anything printed on the invitation. Store it in your password manager.
 
 ```bash
 node scripts/hash-passphrase.mjs
 ```
 
-It asks for the passphrase twice with the typing hidden, so it never lands in shell history or on screen, and prints only the hash. It refuses a passphrase given on the command line, and anything under 16 characters.
+It asks for the PIN twice with the typing hidden, so it never lands in shell history or on screen, and prints only the hash. It refuses one given on the command line, a PIN under 6 digits, and any other secret under 16 characters.
 
 **Only the hash goes into Cloudflare.** Never commit the plaintext, never put it in a file, never send it to Claude.
 
@@ -169,7 +169,7 @@ Production is the `main` branch on Cloudflare Pages. Do these in order.
 npx wrangler d1 migrations apply wedding-guestbook --remote
 ```
 
-Without this, Delete and Settings fail on the real site.
+Without this, Delete, Settings and **signing in** fail on the real site: sign-in waits for the guess limit (0004).
 
 **b. Production secrets.** Workers & Pages → the project → **Settings** → **Variables and Secrets**. Check that **Production** has `WRITER_PASSPHRASE_HASH` and `SESSION_SIGNING_KEY`, both set in step 6.
 

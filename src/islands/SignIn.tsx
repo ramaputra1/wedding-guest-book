@@ -12,7 +12,7 @@ interface Props {
 }
 
 /**
- * The passphrase prompt in front of the writer controls. Done once per iPad;
+ * The PIN prompt in front of the writer controls. Done once per iPad;
  * the session then lasts SESSION_TTL_DAYS. The server decides — this form
  * only asks.
  */
@@ -33,7 +33,14 @@ export function SignIn({ deviceId, deviceLabel, copy, onSignedIn }: Props) {
     } catch (failure) {
       const code = failure instanceof ApiFailure ? failure.code : 'network';
       setProblem(
-        code === 'wrong_passphrase' ? copy.wrongPassphrase : code === 'server_not_configured' ? copy.notConfigured : copy.unreachable,
+        code === 'wrong_passphrase'
+          ? copy.wrongPassphrase
+          : code === 'server_not_configured'
+            ? copy.notConfigured
+            : // The server's own words: how long to wait, or what is missing.
+              failure instanceof ApiFailure && (code === 'too_many_attempts' || code === 'migration_missing')
+              ? failure.message
+              : copy.unreachable,
       );
     } finally {
       setBusy(false);
@@ -53,6 +60,8 @@ export function SignIn({ deviceId, deviceLabel, copy, onSignedIn }: Props) {
           id="passphrase"
           class="sign-in__input"
           type="password"
+          // A PIN: the iPad shows its number pad (a hint only; nothing is refused here).
+          inputMode={copy.numeric ? 'numeric' : undefined}
           autocomplete="current-password"
           value={passphrase}
           onInput={(event) => setPassphrase((event.target as HTMLInputElement).value)}

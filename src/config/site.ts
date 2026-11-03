@@ -168,7 +168,7 @@ export interface CaptureConfig {
   photoTimers: readonly [number, number];
 }
 
-/** Words on the writer's sign-in. DESIGN.md: "Enter the passphrase", not "Login to continue". */
+/** Words on the writer's sign-in. DESIGN.md: "Enter the PIN", not "Login to continue". */
 export interface SignInCopy {
   label: string;
   submit: string;
@@ -176,6 +176,11 @@ export interface SignInCopy {
   wrongPassphrase: string;
   unreachable: string;
   notConfigured: string;
+  /**
+   * The secret is a PIN: the iPad shows its number pad. Set false if the
+   * owner goes back to a long passphrase (scripts/hash-passphrase.mjs takes both).
+   */
+  numeric: boolean;
 }
 
 /**
@@ -450,14 +455,15 @@ export const site = {
       close: "Close",
     },
     signIn: {
-      label: "Enter the passphrase",
+      label: "Enter the PIN",
       submit: "Sign in",
       submitting: "Signing in…",
-      wrongPassphrase: "That passphrase didn't match. Check it and try again.",
+      wrongPassphrase: "That PIN didn't match. Check it and try again.",
       unreachable:
         "The guest book couldn't be reached. Check the wifi and try again.",
       notConfigured:
         "Signing in isn't set up yet. The owner needs to finish the Cloudflare setup.",
+      numeric: true,
     },
   },
 

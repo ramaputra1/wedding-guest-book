@@ -315,7 +315,7 @@ The guest book gets **one** line of introduction and then gets out of the way �
 | Save action | "Save" → "Saved" | "Submit" → "Success!" |
 | Upload failed | "That video didn't save. Tap to try again." | "Oops! Something went wrong." |
 | Empty album | "Nothing here yet." | "No entries found" |
-| Sign-in | "Enter the passphrase" | "Login to continue" |
+| Sign-in | "Enter the PIN" | "Login to continue" |
 
 An action keeps its name through the whole flow: the button that says "Save" produces a state that says "Saved".
 

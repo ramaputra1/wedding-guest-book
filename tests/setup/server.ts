@@ -47,10 +47,22 @@ export function freshState(): { dir: string; remove(): void } {
 }
 
 /**
+ * The suites share one server and try many wrong passphrases on purpose, so by
+ * default the sign-in guess limit is set out of reach; tests/login-lock.spec.ts
+ * starts its own server with a small one.
+ */
+const TEST_BINDINGS = { LOGIN_MAX_FAILURES: '100000', LOGIN_LOCK_SECONDS: '900' };
+
+/**
  * `assetsDir` serves a built site (the browser tests use dist/); without it,
  * an empty page is served and only the API matters.
  */
-export async function startServer(secrets: ServerSecrets, persistDir: string, assetsDir?: string): Promise<TestServer> {
+export async function startServer(
+  secrets: ServerSecrets,
+  persistDir: string,
+  assetsDir?: string,
+  bindings: Record<string, string> = TEST_BINDINGS,
+): Promise<TestServer> {
   const port = await freePort();
   const ownAssets = assetsDir ? null : mkdtempSync(join(tmpdir(), 'guestbook-assets-'));
   if (ownAssets) writeFileSync(join(ownAssets, 'index.html'), '<!doctype html><title>test</title>');
@@ -67,6 +79,7 @@ export async function startServer(secrets: ServerSecrets, persistDir: string, as
       '--show-interactive-dev-session=false',
       '--binding', `SESSION_SIGNING_KEY=${secrets.signingKey}`,
       '--binding', `WRITER_PASSPHRASE_HASH=${secrets.passphraseHash}`,
+      ...Object.entries(bindings).flatMap(([name, value]) => ['--binding', `${name}=${value}`]),
     ],
     { cwd: ROOT, env: QUIET_ENV, stdio: ['ignore', 'pipe', 'pipe'] },
   );

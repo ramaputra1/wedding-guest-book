@@ -166,6 +166,28 @@ export async function insertMedia(db: D1Database, m: NewMedia): Promise<boolean>
   return result.meta.changes === 1;
 }
 
+/** True when the database has not had migration 0004 yet. */
+export function isMissingLoginTable(failure: unknown): boolean {
+  return String(failure).includes('no such table: login_failures');
+}
+
+/** Wrong PINs since `since`: how many, and when the oldest of them was. */
+export async function recentLoginFailures(db: D1Database, since: number): Promise<{ count: number; oldest: number | null }> {
+  const row = await db
+    .prepare('SELECT COUNT(*) AS count, MIN(at) AS oldest FROM login_failures WHERE at > ?')
+    .bind(since)
+    .first<{ count: number; oldest: number | null }>();
+  return row ?? { count: 0, oldest: null };
+}
+
+/** Records a wrong PIN, and drops the log's rows older than a day. */
+export async function recordLoginFailure(db: D1Database, at: number): Promise<void> {
+  await db.batch([
+    db.prepare('INSERT INTO login_failures (id, at) VALUES (?, ?)').bind(crypto.randomUUID(), at),
+    db.prepare('DELETE FROM login_failures WHERE at < ?').bind(at - 86_400_000),
+  ]);
+}
+
 const MISSING_SETTINGS_TABLE = 'no such table: album_settings';
 
 /** True when the database has not had migration 0003 yet. */

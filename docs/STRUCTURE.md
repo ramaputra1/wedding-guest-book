@@ -145,11 +145,12 @@ The layout the project builds toward. Phase 0 creates the skeleton; later phases
 ├── migrations/
 │   ├── 0001_init.sql
 │   ├── 0002_media_removals.sql  # deleting a photo or video: hides, never erases
-│   └── 0003_album_settings.sql  # the album's look (Settings), kept as history
+│   ├── 0003_album_settings.sql  # the album's look (Settings), kept as history
+│   └── 0004_login_failures.sql  # the sign-in guess limit that makes a PIN safe
 │
 ├── scripts/
 │   ├── prepare-hero.mjs          # original photo → stripped, resized src/assets/hero/hero.jpg
-│   ├── hash-passphrase.mjs       # generate WRITER_PASSPHRASE_HASH
+│   ├── hash-passphrase.mjs       # generate WRITER_PASSPHRASE_HASH (a PIN of 6+ digits, or a passphrase)
 │   ├── export-archive.ts         # D1 + R2 → archive folder (manifest, files, viewer); --check validates
 │   ├── restore-archive.ts        # archive → D1 + R2: only what is missing, dry run unless --apply
 │   ├── clear-album.ts            # empty an album (the rehearsal's test entries); needs an up-to-date archive

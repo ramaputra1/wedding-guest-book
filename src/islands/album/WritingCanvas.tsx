@@ -132,10 +132,15 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
     };
     const draft = readDraft(pageKey);
     savedDraft.current = draft && !draft.unsaved ? draft : null;
-    if (draft?.unsaved || !entryId || !hasSavedVersion) {
+    if (draft?.unsaved || !entryId) {
       done(draft?.strokes ?? [], draft?.unsaved ?? false, draft !== null);
       return;
     }
+    // Always ask the server, even when the album's list says the page is
+    // blank: that list can be a moment behind. Right after a save is
+    // confirmed this iPad lets its own copy go, and the album is re-read a
+    // beat later — a page opened in between must still start from what was
+    // saved, or the next version would leave that writing out of the album.
     setLoad('loading');
     getLatestStrokes(entryId)
       .then((latest) => {
@@ -143,9 +148,14 @@ export function WritingCanvas({ entryId, hasSavedVersion, spreadName, pending, o
         if (draft && (!latest || draft.updatedAt >= latest.createdAt)) done(draft.strokes, false, true);
         else done(server, false, latest !== null);
       })
-      // Without the saved strokes a new version would drop them from the album's
-      // view, so the page waits rather than guess — unless this iPad has its own copy.
-      .catch(() => (draft ? done(draft.strokes, false, true) : !cancelled && setLoad('unavailable')));
+      .catch(() => {
+        if (draft) return done(draft.strokes, false, true);
+        // Never written on, as far as the album knows: start blank. Otherwise the
+        // page waits rather than guess — a new version without the saved strokes
+        // would drop them from the album's view.
+        if (!hasSavedVersion) return done([], false, false);
+        if (!cancelled) setLoad('unavailable');
+      });
     return () => {
       cancelled = true;
     };
