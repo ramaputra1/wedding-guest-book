@@ -122,15 +122,20 @@ function InlineVideo({ item, autoplay, copy }: { item: AlbumMedia; autoplay: boo
   );
 }
 
-function Print({ item, copy }: { item: AlbumMedia; copy: AlbumCopy }) {
+/**
+ * `sharp`: let the browser choose a larger file on a screen that needs it
+ * (the public album). The writer iPads keep the thumbnail: during the
+ * wedding the venue wifi is for uploads, not for re-downloading the album.
+ */
+function Print({ item, sharp, copy }: { item: AlbumMedia; sharp: boolean; copy: AlbumCopy }) {
   return (
     <span class="mount__print">
       <img
         class="mount__media"
         draggable={false}
         src={item.src}
-        srcset={item.srcSet}
-        sizes={item.srcSet ? MOUNT_SIZES : undefined}
+        srcset={sharp ? item.srcSet : undefined}
+        sizes={sharp && item.srcSet ? MOUNT_SIZES : undefined}
         width={item.width}
         height={item.height}
         alt={item.alt}
@@ -263,7 +268,7 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
         (current.kind === 'video' && !current.pending && current.fullSrc ? (
           <InlineVideo key={current.id} item={current} autoplay={writing} copy={copy} />
         ) : (
-          <Print key={current.id} item={current} copy={copy} />
+          <Print key={current.id} item={current} sharp={!writing} copy={copy} />
         ))}
       {expandable && (
         <button
@@ -321,7 +326,7 @@ export function MediaMount({ media, mode, spreadName, selected, onAdd, onLeave, 
             type="button"
             class="mount__delete"
             // The name holds the visible word (WCAG 2.5.3) and says what goes.
-            aria-label={current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}
+            aria-label={`${copy.remove.label}, ${current.kind === 'video' ? copy.remove.buttonVideo : copy.remove.buttonPhoto}`}
             onClick={() => onRemove(current)}
           >
             {copy.remove.label}

@@ -147,6 +147,11 @@ export async function getLatestStrokes(entryId: string): Promise<{ version: numb
 }
 
 /** Converts the API's entries into what the album draws. */
+/** The thumbnail's width: the original scaled so its long edge is 640 px (src/lib/capture/photo.ts). */
+function thumbWidth(width: number, height: number): number {
+  return Math.round(width * Math.min(1, 640 / Math.max(width, height)));
+}
+
 export function toAlbumEntry(entry: ApiEntry, copy: AlbumCopy): AlbumEntry {
   return {
     id: entry.id,
@@ -155,8 +160,14 @@ export function toAlbumEntry(entry: ApiEntry, copy: AlbumCopy): AlbumEntry {
     media: entry.media.map((item) => ({
       id: item.id,
       kind: item.kind,
-      // The album shows thumbnails; the viewer fetches the full file on tap.
+      // The album shows the thumbnail; where a screen needs more pixels than it
+      // has (a large or Retina screen), the browser may take the photo itself,
+      // or for a video its full-size poster frame. The viewer fetches the full file on tap.
       src: item.thumbUrl,
+      srcSet:
+        item.width && item.height
+          ? `${item.thumbUrl} ${thumbWidth(item.width, item.height)}w, ${item.kind === 'video' ? (item.posterUrl ?? item.thumbUrl) : item.url} ${item.width}w`
+          : undefined,
       fullSrc: item.url,
       posterSrc: item.posterUrl ?? undefined,
       width: item.width ?? 4,

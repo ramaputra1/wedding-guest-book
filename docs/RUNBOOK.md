@@ -18,6 +18,7 @@ Every command runs in a terminal **in the application folder** (`wedding-guest-b
 | A token or key expires, or may have leaked | [10](#10-rotate-a-secret) |
 | "Are we about to be charged?" | [11](#11-check-usage-and-billing) |
 | Wrangler says error 7403 / not authorized | [12](#12-wrangler-cannot-reach-the-account) |
+| Clearing the rehearsal's test entries before the wedding | [13](#13-empty-the-album-before-the-wedding) |
 
 **Two databases, two buckets.**
 
@@ -294,3 +295,28 @@ npx wrangler login          # choose the account the guest book lives in
 ```
 
 Then run the command again.
+
+---
+
+## 13. Empty the album before the wedding
+
+After the rehearsal (docs/PHASE-8-CHECKLIST.md), the real album holds test photos and pages. This erases them — the **only** thing in the project that erases — so it will not run until an up-to-date archive holds everything it would remove.
+
+1. **Archive first.** Either run the Archive workflow by hand (Actions → Archive → Run workflow → **production**) and update your clone (`git pull`, `git lfs pull`), or export straight into a folder:
+   ```bash
+   node --experimental-strip-types scripts/export-archive.ts --target production --out ../archive-before-clear
+   ```
+2. **Look first.** This changes nothing:
+   ```bash
+   node --experimental-strip-types scripts/clear-album.ts --target production --archive ../archive-before-clear
+   ```
+   It lists what the album holds and confirms the archive has all of it. If it says "Run the export first", something was added after step 1: repeat step 1.
+3. **Erase:**
+   ```bash
+   node --experimental-strip-types scripts/clear-album.ts --target production --archive ../archive-before-clear --apply --production
+   ```
+   Entries, photos, videos, page versions and their files go. **The album's look (Settings) stays**; add `--looks` to reset that too.
+4. Open the site: the album is empty and ready.
+
+**Changed your mind?** Everything erased is in that archive: section 7, `restore-archive.ts --all`.
+
